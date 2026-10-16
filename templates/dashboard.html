@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}Bosh sahifa{% endblock %}
+{% block crumb %}Ijro kalendari{% endblock %}
+
+{% block content %}
+
+<div class="stats">
+  <div class="stat st-total"><span class="ic"><i data-lucide="layers"></i></span><div><div class="v">{{ month_total }}</div><div class="l">Shu oydagi ijrolar</div></div></div>
+  <div class="stat st-pending"><span class="ic"><i data-lucide="arrow-right-circle"></i></span><div><div class="v">{{ month_counts|get:'pending'|add:0 }}{% if month_counts.rejected %}<span class="small muted"> +{{ month_counts.rejected }}</span>{% endif %}</div><div class="l">Bajarilmoqda</div></div></div>
+  <div class="stat st-submitted"><span class="ic"><i data-lucide="clock"></i></span><div><div class="v">{{ month_counts|get:'submitted' }}</div><div class="l">Tasdiqlashda</div></div></div>
+  <div class="stat st-overdue"><span class="ic"><i data-lucide="alert-circle"></i></span><div><div class="v">{{ month_counts|get:'overdue' }}</div><div class="l">Muddati o'tgan</div></div></div>
+  <div class="stat st-approved"><span class="ic"><i data-lucide="check-circle-2"></i></span><div><div class="v">{{ month_counts|get:'approved' }}</div><div class="l">Bajarildi</div></div></div>
+</div>
+
+<div class="cal-layout" id="cal-layout">
+  <section>
+    <div class="cal-head">
+      <a class="cal-nav" href="{% qs y=prev.y m=prev.m date='' tutor='' %}" title="Oldingi oy"><i data-lucide="chevron-left"></i></a>
+      <h1>{{ title }}</h1>
+      <a class="cal-nav" href="{% qs y=next.y m=next.m date='' tutor='' %}" title="Keyingi oy"><i data-lucide="chevron-right"></i></a>
+      <span class="cal-total" title="Shu oydagi ijrolar soni">{{ month_total }}</span>
+      <div class="right flex">
+        <a class="btn" href="{% qs y='' m='' date='' tutor='' %}">Bugun</a>
+        {% if user.is_head %}<a class="btn btn-primary" href="{% url 'task_create' %}?date={{ selected|date:'Y-m-d' }}"><i data-lucide="plus"></i> Topshiriq</a>{% endif %}
+        <button class="btn btn-icon" type="button" id="panel-toggle" title="Kun panelini yashirish / ko'rsatish"><i data-lucide="panel-right"></i></button>
+      </div>
+    </div>
+
+    <div class="cal-toolbar">
+      <div class="legend">
+        <span><span class="dot-ic st-overdue"><i data-lucide="alert-circle"></i></span> Muddati o'tgan</span>
+        <span><span class="dot-ic st-submitted"><i data-lucide="clock"></i></span> Tasdiqlashda</span>
+        <span><span class="dot-ic st-pending"><i data-lucide="arrow-right"></i></span> Bajarilmoqda</span>
+        <span><span class="dot-ic st-rejected"><i data-lucide="rotate-ccw"></i></span> Qaytarilgan</span>
+        <span><span class="dot-ic st-approved"><i data-lucide="check"></i></span> Bajarildi</span>
+      </div>
+      <div class="right flex">
+        <div class="segmented" title="Kalendarda topshiriqlar qaysi sana bo'yicha joylashsin">
+          <a href="{% qs by='' %}" class="{% if by == 'exec' %}on{% endif %}">Ijro kuni</a>
+          <a href="{% qs by='deadline' %}" class="{% if by == 'deadline' %}on{% endif %}">Muddat</a>
+        </div>
+        {% if user.is_head and faculties %}
+        <form method="get">
+          {% for k, v in request.GET.items %}{% if k != 'faculty' and k != 'tutor' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+          <select class="select-sm" name="faculty" onchange="this.form.submit()">
+            <option value="">Barcha fakultetlar</option>
+            {% for f in faculties %}<option value="{{ f.pk }}" {% if f.pk == faculty_id %}selected{% endif %}>{{ f.name }}</option>{% endfor %}
+          </select>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <table class="calendar">
+      <thead><tr>{% for w, ws in weekdays %}<th><span class="wd-full">{{ w }}</span><span class="wd-short">{{ ws }}</span></th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for week in weeks %}
+        <tr>
+        {% for c in week %}
+          <td>
+            <div class="day{% if not c.in_month %} out{% endif %}{% if c.is_today %} today{% endif %}{% if c.is_selected %} selected{% endif %}{% if c.is_weekend %} weekend{% endif %}">
+              <a class="day-link" href="{% qs y=c.date.year m=c.date.month date=c.date|date:'Y-m-d' tutor='' %}" aria-label="{{ c.date|uz_date }}"></a>
+              <div class="num-row">
+                <span class="num">{{ c.date.day }}</span>
+                {% if user.is_head %}<a class="add" style="position:relative;z-index:1" href="{% url 'task_create' %}?date={{ c.date|date:'Y-m-d' }}" title="Shu kunga topshiriq"><i data-lucide="plus"></i></a>{% endif %}
+              </div>
+              {% if user.is_head %}
+                {% for e in c.names %}
+                  <a class="chip st-{{ e.status }}{% if c.is_selected and selected_tutor and selected_tutor.pk == e.tutor.pk %} on{% endif %}"
+                     href="{% qs y=c.date.year m=c.date.month date=c.date|date:'Y-m-d' tutor=e.tutor.pk %}"
+                     title="{{ e.tutor.full_name }} — {{ e.count }} ta ijro ({{ e.status|status_label }})">
+                    <span class="dot-ic"><i data-lucide="{{ e.status|status_icon }}"></i></span>
+                    <span class="nm">{{ e.tutor.short_name }}</span>{% if e.count > 1 %}<span class="n">{{ e.count }}</span>{% endif %}
+                  </a>
+                {% endfor %}
+              {% else %}
+                {% for a in c.tasks %}
+                  <a class="chip st-{{ a.display_status }}" href="{% url 'assignment_detail' a.pk %}" title="{{ a.task.title }} — {{ a.display_status_label }}">
+                    <span class="dot-ic"><i data-lucide="{{ a.display_status|status_icon }}"></i></span>
+                    <span class="nm">{{ a.task.title }}</span>
+                  </a>
+                {% endfor %}
+              {% endif %}
+              {% if c.more %}<a class="more-link" href="{% qs y=c.date.year m=c.date.month date=c.date|date:'Y-m-d' tutor='' %}">yana +{{ c.more }}</a>{% endif %}
+            </div>
+          </td>
+        {% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <aside class="card panel">
+    <div class="panel-head">
+      <div class="panel-date">
+        <span class="ic"><i data-lucide="calendar-days"></i></span>
+        <div class="grow">
+          <h3>{{ selected|uz_date_wd }}</h3>
+          <div class="flex mt-1">
+            {% if selected == today %}<span class="badge primary">Bugun</span>{% endif %}
+            <span class="badge plain">{{ day_items|length }} ta ijro</span>
+          </div>
+        </div>
+      </div>
+      {% if selected_tutor %}
+        <div class="filter-pill mt-3">
+          <span class="avatar sm">{{ selected_tutor.initials }}</span>
+          <div class="grow">{{ selected_tutor.full_name }}<div class="small" style="font-weight:500;opacity:.8">{{ selected_tutor.faculty.name|default:'' }}</div></div>
+          <a href="{% url 'tutor_detail' selected_tutor.pk %}" class="btn btn-sm" title="Tyutorning barcha topshiriqlari"><i data-lucide="user"></i></a>
+          <a href="{% qs tutor='' %}" class="btn btn-sm btn-icon" title="Filtrni olib tashlash"><i data-lucide="x"></i></a>
+        </div>
+      {% endif %}
+      <form class="search mt-3" method="get">
+        {% for k, v in request.GET.items %}{% if k != 'q' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+        <i data-lucide="search"></i>
+        <input type="search" name="q" value="{{ query }}" placeholder="Raqam, mazmun yoki ijrochi bo'yicha">
+      </form>
+    </div>
+    <div class="panel-list">
+      {% regroup day_items by display_status as groups %}
+      {% for g in groups %}
+        <span class="group-label st-{{ g.grouper }}"><i data-lucide="{{ g.grouper|status_icon }}" style="width:14px;height:14px"></i> {{ g.grouper|status_label }} <b>{{ g.list|length }}</b></span>
+        {% for a in g.list %}
+          <a class="tcard" href="{% url 'assignment_detail' a.pk %}">
+            <div class="top">
+              <span class="no">{{ a.task.number }}</span>
+              <span>{{ a.task.deadline|short_date }}, {{ a.task.deadline|time:'H:i' }}</span>
+              <span class="badge st-{{ a.display_status }} right">{{ a.display_status_label }}</span>
+            </div>
+            <div class="title">{{ a.task.title }}</div>
+            {% if a.task.description %}<div class="desc">{{ a.task.description }}</div>{% endif %}
+            {% if user.is_head %}
+              <div class="who"><span class="avatar sm">{{ a.tutor.initials }}</span> {{ a.tutor.full_name }} <span class="text-muted small">· {{ a.tutor.faculty.label|default:'' }}</span></div>
+            {% else %}
+              <div class="small muted mt-1"><i data-lucide="timer" style="width:13px;height:13px;vertical-align:-2px"></i> {% time_left a.task.deadline %}</div>
+            {% endif %}
+          </a>
+        {% endfor %}
+      {% empty %}
+        <div class="empty">
+          <i data-lucide="calendar-x-2"></i>
+          <div class="t">Bu kunda ijro yo'q</div>
+          <div class="small">{% if query %}Qidiruv bo'yicha hech narsa topilmadi.{% else %}Kalendardan boshqa kunni tanlang.{% endif %}</div>
+          {% if user.is_head %}<a class="btn btn-sm mt-3" href="{% url 'task_create' %}?date={{ selected|date:'Y-m-d' }}"><i data-lucide="plus"></i> Topshiriq qo'shish</a>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var layout = document.getElementById("cal-layout");
+  var key = "ijro.panelCollapsed";
+  try { if (localStorage.getItem(key) === "1") layout.classList.add("panel-collapsed"); } catch (e) {}
+  document.getElementById("panel-toggle").addEventListener("click", function () {
+    layout.classList.toggle("panel-collapsed");
+    try { localStorage.setItem(key, layout.classList.contains("panel-collapsed") ? "1" : "0"); } catch (e) {}
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Fakultetni tahrirlash{% endblock %}
+{% block crumb %}Fakultetlar{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'faculty_list' %}"><i data-lucide="arrow-left"></i> Fakultetlar</a>
+<div class="page-head"><h1>{{ faculty.name }}</h1></div>
+<div class="card" style="max-width:560px">
+  <form method="post" class="card-body" style="display:grid;gap:14px">{% csrf_token %}
+    {% for field in form %}{% include "includes/field.html" %}{% endfor %}
+    <div class="form-actions">
+      <a class="btn" href="{% url 'faculty_list' %}">Bekor qilish</a>
+      <button class="btn btn-primary" type="submit"><i data-lucide="save"></i> Saqlash</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

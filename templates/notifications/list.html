@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}Bildirishnomalar{% endblock %}
+{% block crumb %}Bildirishnomalar{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Bildirishnomalar</h1><div class="sub">{{ unread_count }} ta o'qilmagan</div></div>
+  <form method="post" action="{% url 'notification_read_all' %}" class="right">{% csrf_token %}
+    <button class="btn" type="submit"><i data-lucide="check-check"></i> Hammasini o'qilgan deb belgilash</button>
+  </form>
+</div>
+<div class="card" style="max-width:860px">
+  {% for n in notifications %}
+    <a href="{% url 'notification_open' n.pk %}" class="flex" style="padding:14px 18px;border-bottom:1px solid var(--border);color:var(--text);align-items:flex-start;gap:12px;{% if not n.is_read %}background:#fbfaff{% endif %}">
+      <span class="avatar {% if n.kind == 'approved' %}st-approved{% elif n.kind == 'rejected' %}st-rejected{% elif n.kind == 'submitted' %}st-submitted{% elif n.kind == 'reminder' %}st-overdue{% else %}st-pending{% endif %}" style="background:var(--bg-c);color:var(--c)">
+        <i data-lucide="{% if n.kind == 'approved' %}check{% elif n.kind == 'rejected' %}rotate-ccw{% elif n.kind == 'submitted' %}clipboard-check{% elif n.kind == 'reminder' %}alarm-clock{% elif n.kind == 'updated' %}pencil{% else %}send{% endif %}" style="width:15px;height:15px"></i>
+      </span>
+      <div class="grow">
+        <div style="font-weight:{% if n.is_read %}500{% else %}700{% endif %}">{{ n.title }}</div>
+        {% if n.message %}<div class="small muted" style="white-space:pre-wrap">{{ n.message }}</div>{% endif %}
+        <div class="small text-muted">{{ n.created_at|uz_datetime }} · {{ n.get_kind_display }}</div>
+      </div>
+      {% if not n.is_read %}<span style="width:9px;height:9px;border-radius:50%;background:var(--primary);margin-top:6px"></span>{% endif %}
+    </a>
+  {% empty %}
+    <div class="empty"><i data-lucide="bell-off"></i><div class="t">Bildirishnomalar yo'q</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

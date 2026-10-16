@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}Mening topshiriqlarim{% endblock %}
+{% block crumb %}Mening topshiriqlarim{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Mening topshiriqlarim</h1><div class="sub">Sizga biriktirilgan ijro topshiriqlari — jami {{ total }} ta</div></div>
+</div>
+
+<div class="tabs">
+  <a href="?status=open" class="{% if status == 'open' %}on{% endif %}">Bajarilishi kerak <span class="n">{{ open_total }}</span></a>
+  <a href="?status=overdue" class="{% if status == 'overdue' %}on{% endif %}">Muddati o'tgan <span class="n">{{ counts|get:'overdue' }}</span></a>
+  <a href="?status=submitted" class="{% if status == 'submitted' %}on{% endif %}">Tasdiqlashda <span class="n">{{ counts|get:'submitted' }}</span></a>
+  <a href="?status=approved" class="{% if status == 'approved' %}on{% endif %}">Bajarilgan <span class="n">{{ counts|get:'approved' }}</span></a>
+  <a href="?status=all" class="{% if status == 'all' %}on{% endif %}">Barchasi <span class="n">{{ total }}</span></a>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px">
+  {% for a in assignments %}
+    <div class="tcard" style="display:flex;flex-direction:column">
+      <a href="{% url 'assignment_detail' a.pk %}" style="color:inherit">
+        <div class="top">
+          <span class="no">{{ a.task.number }}</span>
+          <span>{{ a.task.created_at|short_date }}</span>
+          <span class="badge st-{{ a.display_status }} right"><i data-lucide="{{ a.display_status|status_icon }}"></i> {{ a.display_status_label }}</span>
+        </div>
+        <div class="title" style="font-size:14px">{{ a.task.title }}</div>
+        {% if a.task.description %}<div class="desc">{{ a.task.description }}</div>{% endif %}
+      </a>
+      <div class="flex mt-2 small muted flex-wrap">
+        <span><i data-lucide="calendar" style="width:13px;height:13px;vertical-align:-2px"></i> Ijro kuni: <b>{{ a.task.execution_date|short_date }}</b></span>
+        <span>· Muddat: <b>{{ a.task.deadline|short_date }} {{ a.task.deadline|time:'H:i' }}</b></span>
+      </div>
+      {% if a.can_submit %}
+        <div class="flex mt-3" style="margin-top:auto;padding-top:12px">
+          <span class="small"{% if a.display_status == 'overdue' %} style="color:var(--red-text)"{% endif %}><i data-lucide="timer" style="width:13px;height:13px;vertical-align:-2px"></i> {% time_left a.task.deadline %}</span>
+          <a class="btn btn-sm btn-success right" href="{% url 'assignment_detail' a.pk %}?close=1"><i data-lucide="check-square"></i> Ijroni yopish</a>
+        </div>
+      {% endif %}
+    </div>
+  {% empty %}
+    <div class="card" style="grid-column:1/-1"><div class="empty"><i data-lucide="party-popper"></i><div class="t">Bu bo'limda topshiriq yo'q</div></div></div>
+  {% endfor %}
+</div>
+{% endblock %}

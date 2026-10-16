@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}Topshiriqlar{% endblock %}
+{% block crumb %}Topshiriqlar{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Ijro topshiriqlari</h1><div class="sub">Tyutorlarga yuborilgan barcha topshiriqlar va ularning bajarilishi</div></div>
+  <a class="btn btn-primary right" href="{% url 'task_create' %}"><i data-lucide="plus"></i> Yangi topshiriq</a>
+</div>
+
+<div class="tabs">
+  <a href="{% qs state='' %}" class="{% if not state %}on{% endif %}">Barchasi</a>
+  <a href="{% qs state='active' %}" class="{% if state == 'active' %}on{% endif %}"><i data-lucide="arrow-right-circle" style="width:15px;height:15px"></i> Jarayonda</a>
+  <a href="{% qs state='overdue' %}" class="{% if state == 'overdue' %}on{% endif %}"><i data-lucide="alert-circle" style="width:15px;height:15px"></i> Muddati o'tgan</a>
+  <a href="{% qs state='done' %}" class="{% if state == 'done' %}on{% endif %}"><i data-lucide="check-circle-2" style="width:15px;height:15px"></i> To'liq bajarilgan</a>
+  <form method="get" class="right" style="padding:4px 0">
+    {% if state %}<input type="hidden" name="state" value="{{ state }}">{% endif %}
+    <div class="search" style="height:34px"><i data-lucide="search"></i><input type="search" name="q" value="{{ query }}" placeholder="Raqam yoki mavzu"></div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>№</th><th>Topshiriq</th><th>Ijro kuni</th><th>Muddat</th><th>Ijrochilar</th><th style="min-width:170px">Bajarilishi</th><th style="width:1%"></th></tr></thead>
+      <tbody>
+      {% for t in tasks %}
+        <tr>
+          <td class="nowrap"><b>{{ t.number }}</b></td>
+          <td><a class="title-cell" href="{% url 'task_detail' t.pk %}">{{ t.title|truncatechars:100 }}</a><div class="small muted">{{ t.created_at|uz_datetime }}</div></td>
+          <td class="nowrap">{{ t.execution_date|short_date }}</td>
+          <td class="nowrap">
+            {% if t.deadline < now and t.done < t.total %}<span class="badge st-overdue"><i data-lucide="alert-circle"></i> {{ t.deadline|short_date }}, {{ t.deadline|time:'H:i' }}</span>
+            {% else %}{{ t.deadline|short_date }}, {{ t.deadline|time:'H:i' }}{% endif %}
+          </td>
+          <td><span class="badge plain"><i data-lucide="users"></i> {{ t.total }}</span>{% if t.review %} <span class="badge st-submitted" title="Tasdiqlash kutilmoqda"><i data-lucide="clock"></i> {{ t.review }}</span>{% endif %}</td>
+          <td><div class="flex"><div class="progress grow"><span style="width:{{ t.percent }}%"></span></div><span class="progress-label">{{ t.done }}/{{ t.total }}</span></div></td>
+          <td><a class="btn btn-sm" href="{% url 'task_detail' t.pk %}">Ochish <i data-lucide="chevron-right"></i></a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7"><div class="empty"><i data-lucide="send"></i><div class="t">Topshiriqlar topilmadi</div><a class="btn btn-sm btn-primary mt-2" href="{% url 'task_create' %}"><i data-lucide="plus"></i> Yangi topshiriq</a></div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}{{ task.number }} {{ task.title|truncatechars:40 }}{% endblock %}
+{% block crumb %}Topshiriqlar{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'task_list' %}"><i data-lucide="arrow-left"></i> Topshiriqlar</a>
+<div class="page-head">
+  <div><h1>{{ task.number }} topshiriq</h1><div class="sub">{{ total }} ta tyutorga yuborilgan · {{ counts|get:'approved' }} tasi bajardi</div></div>
+  <div class="right flex">
+    <a class="btn" href="{% url 'task_edit' task.pk %}"><i data-lucide="pencil"></i> Tahrirlash</a>
+    <form method="post" action="{% url 'task_delete' task.pk %}" data-confirm="Topshiriq va unga oid barcha ijrolar o'chiriladi. Davom etilsinmi?">{% csrf_token %}
+      <button class="btn btn-danger" type="submit"><i data-lucide="trash-2"></i> O'chirish</button>
+    </form>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div>
+    {% include "tasks/_task_info.html" %}
+
+    <div class="card">
+      <div class="card-head"><i data-lucide="users"></i><h3>Ijrochilar</h3>
+        <div class="right mini-stats">
+          {% if counts.overdue %}<span class="badge st-overdue">Muddati o'tgan {{ counts.overdue }}</span>{% endif %}
+          {% if counts.submitted %}<span class="badge st-submitted">Tasdiqlashda {{ counts.submitted }}</span>{% endif %}
+          {% if counts.pending %}<span class="badge st-pending">Bajarilmoqda {{ counts.pending }}</span>{% endif %}
+          {% if counts.rejected %}<span class="badge st-rejected">Qaytarilgan {{ counts.rejected }}</span>{% endif %}
+          {% if counts.approved %}<span class="badge st-approved">Bajarildi {{ counts.approved }}</span>{% endif %}
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Tyutor</th><th>Holat</th><th>Ijro hisoboti</th><th style="width:1%"></th></tr></thead>
+          <tbody>
+          {% for a in assignments %}
+            {% with s=a.last_submission %}
+            <tr>
+              <td><a class="person" href="{% url 'tutor_detail' a.tutor.pk %}"><span class="avatar">{{ a.tutor.initials }}</span><div><div class="n">{{ a.tutor.full_name }}</div><div class="s">{{ a.tutor.faculty.name|default:'' }}</div></div></a></td>
+              <td>
+                <span class="badge st-{{ a.display_status }}"><i data-lucide="{{ a.display_status|status_icon }}"></i> {{ a.display_status_label }}</span>
+                <div class="small text-muted mt-1">{% if a.seen_at %}Ko'rdi: {{ a.seen_at|uz_datetime }}{% else %}Hali ochmagan{% endif %}</div>
+              </td>
+              <td style="max-width:320px">
+                {% if s %}
+                  <div class="small">{{ s.comment|truncatechars:120 }}</div>
+                  {% if s.link %}<a class="small" href="{{ s.link }}" target="_blank" rel="noopener noreferrer"><i data-lucide="link" style="width:12px;height:12px;vertical-align:-2px"></i> {{ s.link|truncatechars:45 }}</a>{% endif %}
+                  <div class="small text-muted">{{ s.created_at|uz_datetime }}{% if a.is_late %} · <span style="color:var(--red-text)">kechikib</span>{% endif %}</div>
+                {% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
+              <td class="nowrap">
+                {% if a.status == 'submitted' %}
+                  <a class="btn btn-sm btn-success" href="{% url 'assignment_detail' a.pk %}"><i data-lucide="clipboard-check"></i> Ko'rib chiqish</a>
+                {% else %}
+                  <a class="btn btn-sm" href="{% url 'assignment_detail' a.pk %}">Ko'rish</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endwith %}
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-body">
+        <div class="flex" style="justify-content:space-between"><b>Bajarilishi</b><b style="font-size:20px">{{ percent }}%</b></div>
+        <div class="progress mt-2" style="height:10px"><span style="width:{{ percent }}%"></span></div>
+        <div class="meta mt-4">
+          <div class="meta-row"><span class="ic"><i data-lucide="calendar"></i></span><div><div class="k">Ijro kuni</div><div class="v">{{ task.execution_date|uz_date_wd }}</div></div></div>
+          <div class="meta-row"><span class="ic"><i data-lucide="alarm-clock"></i></span><div><div class="k">Ijro muddati</div><div class="v">{{ task.deadline|uz_datetime }}</div><div class="small{% if not task.is_overdue %} muted{% endif %}"{% if task.is_overdue %} style="color:var(--red-text)"{% endif %}>{% time_left task.deadline %}</div></div></div>
+          <div class="meta-row"><span class="ic"><i data-lucide="user"></i></span><div><div class="k">Topshiriq beruvchi</div><div class="v">{{ task.created_by.full_name }}</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

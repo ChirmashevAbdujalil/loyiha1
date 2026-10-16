@@ -1,0 +1,23 @@
+{% load core_tags %}
+<div class="card">
+  <div class="card-head">
+    <span class="badge primary">{{ task.number }}</span>
+    <span class="small muted">{{ task.created_at|uz_datetime }} · {{ task.created_by.full_name }}</span>
+  </div>
+  <div class="card-body">
+    <h2 style="font-size:19px;font-weight:800;margin-bottom:12px">{{ task.title }}</h2>
+    {% if task.description %}<div class="desc-text">{{ task.description }}</div>{% else %}<div class="text-muted">Mazmun kiritilmagan.</div>{% endif %}
+    {% if task.files.all %}
+      <div class="label mt-4">Ilova qilingan fayllar ({{ task.files.all|length }})</div>
+      <div class="file-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
+        {% for f in task.files.all %}
+          <a class="file-item" href="{% url 'task_file' f.pk %}" target="_blank" rel="noopener">
+            <span class="fi"><i data-lucide="{{ f.extension|file_icon }}"></i></span>
+            <div class="grow"><div class="nm">{{ f.original_name }}</div><div class="sz">{{ f.size|filesize }}</div></div>
+            <i data-lucide="download" style="color:var(--muted)"></i>
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>

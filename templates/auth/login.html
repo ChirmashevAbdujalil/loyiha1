@@ -1,0 +1,52 @@
+{% load static %}<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kirish — Ijro nazorati</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-art">
+    <div class="flex" style="gap:12px">
+      <div class="brand-logo" style="margin:0;width:46px;height:46px;font-size:20px">i</div>
+      <div><div class="brand-name">Ijro intizomi</div><div class="brand-sub">Ma'naviyat va ma'rifat bo'limi</div></div>
+    </div>
+    <div style="position:relative;z-index:1">
+      <h1>Tyutorlar faoliyatini ijro nazorati tizimi</h1>
+      <p class="mt-2">Topshiriqlarni yuboring, ijrosini kuzating va bir zumda rangli hisobotlar oling.</p>
+    </div>
+    <div class="login-feats">
+      <div><i data-lucide="calendar-days"></i> Oy kesimidagi ijro kalendari</div>
+      <div><i data-lucide="bell-ring"></i> Tyutorlarga bildirishnomalar</div>
+      <div><i data-lucide="clipboard-check"></i> Ijroni ko'rib chiqish va tasdiqlash</div>
+      <div><i data-lucide="file-spreadsheet"></i> Excel hisobotlar</div>
+    </div>
+  </div>
+  <div class="login-form-wrap">
+    <form class="login-form" method="post">
+      {% csrf_token %}
+      <h2 style="font-size:24px;font-weight:800">Tizimga kirish</h2>
+      <p class="muted mt-1 mb-3">Login va parolingizni kiriting</p>
+      {% if form.errors %}
+        <div class="alert alert-danger mb-3"><i data-lucide="alert-octagon"></i> Login yoki parol noto'g'ri.</div>
+      {% endif %}
+      <div class="field mb-3">
+        <label for="id_username">Login</label>
+        <input type="text" name="username" id="id_username" autofocus autocomplete="username" required value="{{ form.username.value|default:'' }}">
+      </div>
+      <div class="field mb-3">
+        <label for="id_password">Parol</label>
+        <input type="password" name="password" id="id_password" autocomplete="current-password" required>
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn btn-primary btn-lg btn-block" type="submit"><i data-lucide="log-in"></i> Kirish</button>
+    </form>
+  </div>
+</div>
+<script src="{% static 'vendor/lucide.min.js' %}"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

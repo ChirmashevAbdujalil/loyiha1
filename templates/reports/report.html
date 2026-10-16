@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}Hisobot{% endblock %}
+{% block crumb %}Hisobotlar{% endblock %}
+{% block content %}
+<div class="page-head no-print">
+  <div><h1>Ijro hisoboti</h1><div class="sub">Tanlangan sana va soat holatiga ko'ra tyutorlar kesimida topshiriqlarning bajarilishi</div></div>
+  <div class="right flex">
+    <button class="btn" type="button" onclick="window.print()"><i data-lucide="printer"></i> Chop etish / PDF</button>
+    <a class="btn btn-success" href="{% url 'report_export' %}?{{ export_query }}"><i data-lucide="file-spreadsheet"></i> Excel yuklash</a>
+  </div>
+</div>
+
+<form class="card card-body mb-3 no-print" method="get">
+  <div class="report-filters">
+    <div class="field"><label>Davr boshi</label><input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}"></div>
+    <div class="field"><label>Davr oxiri</label><input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}"></div>
+    <div class="field"><label>Holat sanasi va soati</label><input type="datetime-local" name="as_of" value="{{ as_of_input }}"></div>
+    <div class="field"><label>Fakultet</label>
+      <select name="faculty"><option value="">Barchasi</option>{% for f in faculties %}<option value="{{ f.pk }}" {% if f.pk|stringformat:'s' == faculty_id %}selected{% endif %}>{{ f.name }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Tyutor</label>
+      <select name="tutor"><option value="">Barchasi</option>{% for t in tutors %}<option value="{{ t.pk }}" {% if t.pk|stringformat:'s' == tutor_id %}selected{% endif %}>{{ t.full_name }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Davr bo'yicha</label>
+      <select name="by"><option value="deadline" {% if by == 'deadline' %}selected{% endif %}>Ijro muddati</option><option value="exec" {% if by == 'exec' %}selected{% endif %}>Ijro kuni</option></select></div>
+  </div>
+  <div class="flex mt-3">
+    <button class="btn btn-primary" type="submit"><i data-lucide="refresh-cw"></i> Hisobotni shakllantirish</button>
+    <a class="btn" href="{% url 'report' %}">Tozalash</a>
+    <span class="small muted right"><i data-lucide="info" style="width:13px;height:13px;vertical-align:-2px"></i> Holat vaqti o'zgartirilsa, hisobot aynan o'sha paytdagi ko'rinishda tiklanadi.</span>
+  </div>
+</form>
+
+<div class="stats">
+  <div class="stat st-total"><span class="ic"><i data-lucide="layers"></i></span><div><div class="v">{{ totals.total|default:0 }}</div><div class="l">Jami ijrolar</div></div></div>
+  <div class="stat st-approved"><span class="ic"><i data-lucide="check-circle-2"></i></span><div><div class="v">{{ totals.done|default:0 }}</div><div class="l">Bajarildi</div></div></div>
+  <div class="stat st-overdue"><span class="ic"><i data-lucide="x-circle"></i></span><div><div class="v">{{ totals.not_done|default:0 }}</div><div class="l">Bajarilmadi</div></div></div>
+  <div class="stat st-submitted"><span class="ic"><i data-lucide="clock"></i></span><div><div class="v">{{ totals.review|default:0 }}</div><div class="l">Tasdiqlashda</div></div></div>
+  <div class="stat st-total"><span class="ic"><i data-lucide="percent"></i></span><div><div class="v">{{ totals.percent|default:0 }}%</div><div class="l">Umumiy ijro darajasi</div></div></div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="report-title">
+      <h2>Tyutorlar ijro intizomi bo'yicha hisobot</h2>
+      <div class="muted mt-1">{{ date_from|uz_date }} — {{ date_to|uz_date }} davri · <b>{{ as_of|uz_datetime }}</b> holatiga</div>
+    </div>
+    <div class="legend mb-3" style="justify-content:center">
+      <span class="legend-box"><i style="background:#dcf5e4;border:1px solid #9fd8b3"></i> Bajardi</span>
+      <span class="legend-box"><i style="background:#fde2e1;border:1px solid #f1a9a5"></i> Bajarmadi</span>
+      <span class="legend-box"><i style="background:#fdeed9;border:1px solid #f0c48d"></i> Tasdiqlashda</span>
+      <span class="legend-box"><i style="background:#eef1f6;border:1px solid #cfd6e2"></i> Muddati kelmagan</span>
+      <span class="legend-box"><i style="border:1px solid var(--border)"></i> — biriktirilmagan</span>
+    </div>
+    {% if rows %}
+    <div class="table-wrap" style="max-height:70vh;border:1px solid var(--border);border-radius:10px">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th class="sticky-col" style="min-width:230px;text-align:left">Tyutor</th>
+            {% for t in tasks %}
+              <th class="task-col" title="{{ t.title }}">
+                <div class="no">{{ t.number }}</div>
+                <div class="tt">{{ t.title }}</div>
+                <div class="dl">{{ t.deadline|short_date }}, {{ t.deadline|time:'H:i' }}</div>
+              </th>
+            {% endfor %}
+            <th style="text-align:center">Jami</th>
+            <th style="text-align:center">Bajardi</th>
+            <th style="text-align:center">Bajarmadi</th>
+            <th style="text-align:center">Foiz</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+          {% ifchanged row.tutor.faculty_id %}
+            <tr><td colspan="{{ tasks|length|add:5 }}" style="background:var(--surface-2);font-weight:700;color:var(--text-2);padding:7px 12px"><span style="position:sticky;left:12px;white-space:nowrap"><i data-lucide="building-2" style="width:13px;height:13px;vertical-align:-2px"></i> {{ row.tutor.faculty.name|default:'Fakultetsiz' }}</span></td></tr>
+          {% endifchanged %}
+          <tr>
+            <td class="sticky-col"><a class="person" href="{% url 'tutor_detail' row.tutor.pk %}"><span class="avatar sm">{{ row.tutor.initials }}</span><span class="n" style="font-size:13px">{{ row.tutor.full_name }}</span></a></td>
+            {% for c in row.cells %}
+              {% if c %}
+                <td class="rc {{ c.state }}">
+                  <a href="{% url 'assignment_detail' c.assignment.pk %}" style="color:inherit" title="{{ c.assignment.task.title }}">
+                  {% if c.state == 'done' %}<i data-lucide="check"></i> Bajardi
+                  {% elif c.state == 'not_done' %}<i data-lucide="x"></i> Bajarmadi
+                  {% elif c.state == 'review' %}<i data-lucide="clock"></i> Tasdiqlashda
+                  {% else %}<i data-lucide="hourglass"></i> Jarayonda{% endif %}
+                  {% if c.late and c.state != 'not_done' and c.state != 'not_due' %}<span class="late">kechikib</span>{% endif %}
+                  </a>
+                </td>
+              {% else %}
+                <td class="rc none">—</td>
+              {% endif %}
+            {% endfor %}
+            <td class="rc">{{ row.stats.total|default:0 }}</td>
+            <td class="rc" style="color:var(--green-text)">{{ row.stats.done|default:0 }}</td>
+            <td class="rc" style="color:var(--red-text)">{{ row.stats.not_done|default:0 }}</td>
+            <td class="rc"><span class="pct-pill {% if row.stats.percent >= 80 %}pct-hi{% elif row.stats.percent >= 50 %}pct-mid{% else %}pct-lo{% endif %}">{{ row.stats.percent }}%</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td class="sticky-col" style="background:var(--surface-2)">JAMI</td>
+            {% for t in tasks %}<td class="rc">{{ t.report_done }}/{{ t.report_total }}</td>{% endfor %}
+            <td class="rc">{{ totals.total|default:0 }}</td>
+            <td class="rc" style="color:var(--green-text)">{{ totals.done|default:0 }}</td>
+            <td class="rc" style="color:var(--red-text)">{{ totals.not_done|default:0 }}</td>
+            <td class="rc">{{ totals.percent|default:0 }}%</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty"><i data-lucide="bar-chart-3"></i><div class="t">Tanlangan davrda ijrolar topilmadi</div><div class="small">Davr yoki filtrlarni o'zgartirib ko'ring.</div></div>
+    {% endif %}
+  </div>
+</div>
+
+{% if faculty_summary %}
+<div class="card">
+  <div class="card-head"><i data-lucide="building-2"></i><h3>Fakultetlar kesimida</h3></div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Fakultet</th><th>Tyutorlar</th><th>Jami ijro</th><th>Bajardi</th><th>Tasdiqlashda</th><th>Bajarmadi</th><th style="min-width:200px">Ijro darajasi</th></tr></thead>
+      <tbody>
+      {% for s in faculty_summary %}
+        <tr>
+          <td><b>{{ s.faculty.name|default:'Fakultetsiz' }}</b></td>
+          <td>{{ s.tutors }}</td><td>{{ s.total }}</td>
+          <td><span class="badge st-approved">{{ s.done }}</span></td>
+          <td><span class="badge st-submitted">{{ s.review }}</span></td>
+          <td><span class="badge st-overdue">{{ s.not_done }}</span></td>
+          <td><div class="flex"><div class="progress grow"><span style="width:{{ s.percent }}%"></span></div><span class="progress-label">{{ s.percent }}%</span></div></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

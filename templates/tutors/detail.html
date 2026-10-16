@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}{{ tutor.full_name }}{% endblock %}
+{% block crumb %}Tyutorlar{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'tutor_list' %}"><i data-lucide="arrow-left"></i> Tyutorlar</a>
+<div class="page-head">
+  <span class="avatar lg">{{ tutor.initials }}</span>
+  <div>
+    <h1>{{ tutor.full_name }} {{ tutor.middle_name }}</h1>
+    <div class="sub flex flex-wrap">
+      <span><i data-lucide="building-2" style="width:14px;height:14px;vertical-align:-2px"></i> {{ tutor.faculty.name|default:'—' }}</span>
+      {% if tutor.position %}<span>· {{ tutor.position }}</span>{% endif %}
+      {% if tutor.phone %}<span>· {{ tutor.phone }}</span>{% endif %}
+      <span>· login: <code>{{ tutor.username }}</code></span>
+      {% if not tutor.is_active %}<span class="badge st-overdue">Nofaol</span>{% endif %}
+    </div>
+  </div>
+  <div class="right flex">
+    <a class="btn" href="{% url 'report' %}?tutor={{ tutor.pk }}"><i data-lucide="bar-chart-3"></i> Hisobot</a>
+    <a class="btn" href="{% url 'tutor_edit' tutor.pk %}"><i data-lucide="pencil"></i> Tahrirlash</a>
+    <form method="post" action="{% url 'tutor_delete' tutor.pk %}" data-confirm="{{ tutor.full_name }} o'chirilsinmi? (Topshiriqlari bo'lsa, nofaol holatga o'tkaziladi)">{% csrf_token %}
+      <button class="btn btn-danger" type="submit"><i data-lucide="trash-2"></i></button>
+    </form>
+  </div>
+</div>
+
+<div class="stats">
+  <a class="stat st-total" href="?"><span class="ic"><i data-lucide="layers"></i></span><div><div class="v">{{ stats.total }}</div><div class="l">Jami ijrolar</div></div></a>
+  <a class="stat st-pending" href="?status=pending"><span class="ic"><i data-lucide="arrow-right-circle"></i></span><div><div class="v">{{ stats|get:'pending' }}</div><div class="l">Bajarilmoqda</div></div></a>
+  <a class="stat st-submitted" href="?status=submitted"><span class="ic"><i data-lucide="clock"></i></span><div><div class="v">{{ stats|get:'submitted' }}</div><div class="l">Tasdiqlashda</div></div></a>
+  <a class="stat st-overdue" href="?status=overdue"><span class="ic"><i data-lucide="alert-circle"></i></span><div><div class="v">{{ stats|get:'overdue' }}</div><div class="l">Muddati o'tgan</div></div></a>
+  <a class="stat st-approved" href="?status=approved"><span class="ic"><i data-lucide="check-circle-2"></i></span><div><div class="v">{{ stats|get:'approved' }} <span class="small muted">/ {{ stats.percent }}%</span></div><div class="l">Bajarildi</div></div></a>
+</div>
+
+{% include "tasks/_assignment_table.html" with show_tutor=0 %}
+{% endblock %}

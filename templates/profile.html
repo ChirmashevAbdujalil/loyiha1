@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Profil{% endblock %}
+{% block crumb %}Profil{% endblock %}
+{% block content %}
+<div class="page-head">
+  <span class="avatar lg">{{ user.initials }}</span>
+  <div><h1>{{ user.full_name }} {{ user.middle_name }}</h1>
+    <div class="sub">{{ user.get_role_display }}{% if user.faculty %} · {{ user.faculty.name }}{% endif %}{% if user.position %} · {{ user.position }}{% endif %} · login: <code>{{ user.username }}</code></div></div>
+</div>
+<div class="card" style="max-width:520px">
+  <div class="card-head"><i data-lucide="key-round"></i><h3>Parolni o'zgartirish</h3></div>
+  <form method="post" class="card-body" style="display:grid;gap:14px">{% csrf_token %}
+    {% for field in form %}{% include "includes/field.html" %}{% endfor %}
+    <div class="form-actions"><button class="btn btn-primary" type="submit"><i data-lucide="save"></i> Saqlash</button></div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{% if tutor %}Tyutorni tahrirlash{% else %}Yangi tyutor{% endif %}{% endblock %}
+{% block crumb %}Tyutorlar{% endblock %}
+{% block content %}
+<a class="back-link" href="{% if tutor %}{% url 'tutor_detail' tutor.pk %}{% else %}{% url 'tutor_list' %}{% endif %}"><i data-lucide="arrow-left"></i> Orqaga</a>
+<div class="page-head"><div><h1>{% if tutor %}{{ tutor.full_name }}{% else %}Yangi tyutor qo'shish{% endif %}</h1><div class="sub">Tyutor fakultetga biriktiriladi va tizimga o'z login-paroli bilan kiradi.</div></div></div>
+<form method="post" class="card" style="max-width:880px" autocomplete="off">{% csrf_token %}
+  {% if form.non_field_errors %}<div class="card-body"><div class="alert alert-danger">{{ form.non_field_errors }}</div></div>{% endif %}
+  <div class="card-head"><i data-lucide="id-card"></i><h3>Shaxsiy ma'lumotlar</h3></div>
+  <div class="card-body form-grid">
+    {% include "includes/field.html" with field=form.last_name %}
+    {% include "includes/field.html" with field=form.first_name %}
+    {% include "includes/field.html" with field=form.middle_name %}
+    {% include "includes/field.html" with field=form.phone %}
+    {% include "includes/field.html" with field=form.faculty %}
+    {% include "includes/field.html" with field=form.position %}
+    {% include "includes/field.html" with field=form.email full=1 %}
+  </div>
+  <div class="card-head" style="border-top:1px solid var(--border)"><i data-lucide="key-round"></i><h3>Tizimga kirish</h3></div>
+  <div class="card-body form-grid">
+    {% include "includes/field.html" with field=form.username %}
+    {% include "includes/field.html" with field=form.password %}
+    <div class="field full"><label class="check">{{ form.is_active }} {{ form.is_active.label }}</label></div>
+  </div>
+  <div class="card-body form-actions" style="border-top:1px solid var(--border)">
+    <a class="btn" href="{% url 'tutor_list' %}">Bekor qilish</a>
+    {% if not tutor %}<button class="btn" type="submit" name="add_another" value="1"><i data-lucide="copy-plus"></i> Saqlash va yana qo'shish</button>{% endif %}
+    <button class="btn btn-primary" type="submit"><i data-lucide="save"></i> Saqlash</button>
+  </div>
+</form>
+{% endblock %}

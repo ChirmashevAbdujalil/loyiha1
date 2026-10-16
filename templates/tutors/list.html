@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}Tyutorlar{% endblock %}
+{% block crumb %}Tyutorlar{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Tyutorlar</h1><div class="sub">Fakultetlar kesimida — jami {{ tutor_total }} nafar</div></div>
+  <a class="btn btn-primary right" href="{% url 'tutor_create' %}{% if faculty_id %}?faculty={{ faculty_id }}{% endif %}"><i data-lucide="user-plus"></i> Tyutor qo'shish</a>
+</div>
+
+<form class="card card-body flex flex-wrap mb-3" method="get" style="gap:10px">
+  <div class="search grow" style="min-width:220px"><i data-lucide="search"></i><input type="search" name="q" value="{{ query }}" placeholder="F.I.Sh, login yoki telefon"></div>
+  <select class="select-sm" name="faculty" onchange="this.form.submit()" style="height:38px">
+    <option value="">Barcha fakultetlar</option>
+    {% for f in faculties %}<option value="{{ f.pk }}" {% if f.pk|stringformat:'s' == faculty_id %}selected{% endif %}>{{ f.name }}</option>{% endfor %}
+  </select>
+  <div class="segmented">
+    <a href="{% qs show='' %}" class="{% if show == 'active' %}on{% endif %}">Faol</a>
+    <a href="{% qs show='inactive' %}" class="{% if show == 'inactive' %}on{% endif %}">Nofaol</a>
+    <a href="{% qs show='all' %}" class="{% if show == 'all' %}on{% endif %}">Barchasi</a>
+  </div>
+  <button class="btn" type="submit"><i data-lucide="filter"></i> Filtr</button>
+</form>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Tyutor</th><th>Lavozimi</th><th>Telefon</th><th>Login</th><th>Ijrolar</th><th style="min-width:150px">Bajarilish</th><th style="width:1%"></th></tr></thead>
+      <tbody>
+      {% for faculty, tutors in groups %}
+        <tr class="group-row"><td colspan="7"><i data-lucide="building-2" style="width:14px;height:14px;vertical-align:-2px"></i> {{ faculty.name|default:'Fakultetsiz' }} · {{ tutors|length }} nafar</td></tr>
+        {% for t in tutors %}
+        <tr>
+          <td><a class="person" href="{% url 'tutor_detail' t.pk %}"><span class="avatar">{{ t.initials }}</span><div><div class="n">{{ t.full_name }}</div><div class="s">{{ t.middle_name }}{% if not t.is_active %} · <span style="color:var(--red-text)">nofaol</span>{% endif %}</div></div></a></td>
+          <td class="muted">{{ t.position|default:'—' }}</td>
+          <td class="nowrap">{{ t.phone|default:'—' }}</td>
+          <td><code>{{ t.username }}</code></td>
+          <td>
+            <div class="mini-stats">
+              <span class="badge plain" title="Jami">{{ t.stats.total }}</span>
+              {% if t.stats.overdue %}<span class="badge st-overdue" title="Muddati o'tgan">{{ t.stats.overdue }}</span>{% endif %}
+              {% if t.stats.submitted %}<span class="badge st-submitted" title="Tasdiqlashda">{{ t.stats.submitted }}</span>{% endif %}
+            </div>
+          </td>
+          <td><div class="flex"><div class="progress grow"><span style="width:{{ t.stats.percent }}%"></span></div><span class="progress-label">{{ t.stats.percent }}%</span></div></td>
+          <td class="nowrap"><div class="flex">
+            <a class="btn btn-sm" href="{% url 'tutor_detail' t.pk %}" title="Ko'rish"><i data-lucide="eye"></i></a>
+            <a class="btn btn-sm" href="{% url 'tutor_edit' t.pk %}" title="Tahrirlash"><i data-lucide="pencil"></i></a>
+          </div></td>
+        </tr>
+        {% endfor %}
+      {% empty %}
+        <tr><td colspan="7"><div class="empty"><i data-lucide="users"></i><div class="t">Tyutor topilmadi</div><a class="btn btn-sm mt-2" href="{% url 'tutor_create' %}"><i data-lucide="user-plus"></i> Tyutor qo'shish</a></div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

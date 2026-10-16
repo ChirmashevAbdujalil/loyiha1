@@ -1,0 +1,26 @@
+{% load core_tags %}
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr>
+        <th>Topshiriq</th>{% if show_tutor %}<th>Ijrochi</th>{% endif %}
+        <th>Ijro kuni</th><th>Muddat</th><th>Holat</th><th>Yuborilgan</th><th style="width:1%"></th>
+      </tr></thead>
+      <tbody>
+      {% for a in assignments %}
+        <tr>
+          <td><a class="title-cell" href="{% url 'assignment_detail' a.pk %}"><span class="muted small">{{ a.task.number }}</span> {{ a.task.title|truncatechars:90 }}</a></td>
+          {% if show_tutor %}<td><div class="person"><span class="avatar sm">{{ a.tutor.initials }}</span><div><div class="n">{{ a.tutor.full_name }}</div><div class="s">{{ a.tutor.faculty.label|default:'' }}</div></div></div></td>{% endif %}
+          <td class="nowrap">{{ a.task.execution_date|short_date }}</td>
+          <td class="nowrap">{{ a.task.deadline|short_date }}, {{ a.task.deadline|time:'H:i' }}</td>
+          <td><span class="badge st-{{ a.display_status }}"><i data-lucide="{{ a.display_status|status_icon }}"></i> {{ a.display_status_label }}</span>{% if a.is_late %} <span class="badge plain" title="Muddatdan keyin yuborilgan">kechikkan</span>{% endif %}</td>
+          <td class="nowrap muted small">{{ a.submitted_at|uz_datetime|default:'—' }}</td>
+          <td><a class="btn btn-sm" href="{% url 'assignment_detail' a.pk %}">Ko'rish <i data-lucide="chevron-right"></i></a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7"><div class="empty"><i data-lucide="inbox"></i><div class="t">Ijrolar yo'q</div></div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

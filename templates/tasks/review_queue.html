@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}Tasdiqlash uchun{% endblock %}
+{% block crumb %}Tasdiqlash uchun{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Tasdiqlash uchun</h1><div class="sub">Tyutorlar yopgan va sizning tasdig'ingizni kutayotgan ijrolar — {{ assignments|length }} ta</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px">
+{% for a in assignments %}
+  {% with s=a.submissions.all.0 %}
+  <div class="card" style="display:flex;flex-direction:column;margin:0">
+    <div class="card-head">
+      <span class="avatar">{{ a.tutor.initials }}</span>
+      <div class="grow"><b>{{ a.tutor.full_name }}</b><div class="small muted">{{ a.tutor.faculty.name|default:'' }}</div></div>
+      <span class="small muted nowrap">{{ s.created_at|uz_datetime }}</span>
+    </div>
+    <div class="card-body" style="flex:1">
+      <a href="{% url 'assignment_detail' a.pk %}" class="title-cell" style="color:var(--text);font-weight:700"><span class="muted">{{ a.task.number }}</span> {{ a.task.title }}</a>
+      <div class="small muted mt-1">Muddat: {{ a.task.deadline|uz_datetime }}{% if a.is_late %} · <span style="color:var(--red-text)">kechikib yuborilgan</span>{% endif %}</div>
+      <div class="desc-text mt-2" style="background:var(--surface-2);padding:10px 12px;border-radius:8px">{{ s.comment|truncatechars:400 }}</div>
+      {% if s.link %}<a class="link-box" href="{{ s.link }}" target="_blank" rel="noopener noreferrer"><i data-lucide="external-link"></i> {{ s.link|truncatechars:70 }}</a>{% endif %}
+      {% if s.files.all %}<div class="small muted mt-2"><i data-lucide="paperclip" style="width:13px;height:13px;vertical-align:-2px"></i> {{ s.files.all|length }} ta fayl</div>{% endif %}
+    </div>
+    <form method="post" action="{% url 'assignment_review' a.pk %}" class="card-body" style="border-top:1px solid var(--border);display:grid;gap:8px">{% csrf_token %}
+      <input type="hidden" name="next" value="{% url 'review_queue' %}">
+      <textarea class="input" name="comment" rows="2" placeholder="Izoh (qaytarishda majburiy)"></textarea>
+      <div class="flex">
+        <button class="btn btn-success btn-sm" name="action" value="approve" type="submit"><i data-lucide="check"></i> Tasdiqlash</button>
+        <button class="btn btn-danger btn-sm" name="action" value="reject" type="submit"><i data-lucide="rotate-ccw"></i> Qaytarish</button>
+        <a class="btn btn-sm right" href="{% url 'assignment_detail' a.pk %}">Batafsil</a>
+      </div>
+    </form>
+  </div>
+  {% endwith %}
+{% empty %}
+  <div class="card" style="grid-column:1/-1"><div class="empty"><i data-lucide="clipboard-check"></i><div class="t">Tasdiqlash kutayotgan ijro yo'q</div><div class="small">Tyutorlar ijroni yopganda shu yerda paydo bo'ladi.</div></div></div>
+{% endfor %}
+</div>
+{% endblock %}
