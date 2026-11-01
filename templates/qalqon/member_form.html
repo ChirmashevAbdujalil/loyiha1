@@ -4,10 +4,15 @@
 {% block content %}
 <a class="back-link" href="{% if member %}{% url 'qalqon:member_detail' member.pk %}{% else %}{% url 'qalqon:member_list' %}{% endif %}"><i data-lucide="arrow-left"></i> Orqaga</a>
 <div class="page-head"><div><h1>{% if member %}{{ member.full_name }}{% else %}Yangi a'zo qo'shish{% endif %}</h1><div class="sub">A'zo fakultetga biriktiriladi va tizimga o'z login-paroli bilan kiradi.</div></div></div>
-<form method="post" class="card" style="max-width:880px" autocomplete="off">{% csrf_token %}
+{% with pf=form.profile_form %}
+<form method="post" enctype="multipart/form-data" class="card" style="max-width:880px" autocomplete="off">{% csrf_token %}
   {% if form.non_field_errors %}<div class="card-body"><div class="alert alert-danger">{{ form.non_field_errors }}</div></div>{% endif %}
   <div class="card-head"><i data-lucide="id-card"></i><h3>Shaxsiy ma'lumotlar</h3></div>
-  <div class="card-body form-grid">
+  <div class="card-body flex" style="gap:16px;align-items:center">
+    {% if member and member.qalqon_profile.photo %}<img class="person-photo" src="{% url 'qalqon:member_photo' member.pk %}" alt="">{% else %}<span class="avatar xl">{% if member %}{{ member.initials }}{% else %}<i data-lucide="user"></i>{% endif %}</span>{% endif %}
+    <div class="field grow"><label for="id_photo">Rasmi</label>{{ pf.photo }}<div class="help">JPG yoki PNG, 15 MB gacha.</div>{% for e in pf.photo.errors %}<div class="error">{{ e }}</div>{% endfor %}</div>
+  </div>
+  <div class="card-body form-grid" style="padding-top:0">
     {% include "includes/field.html" with field=form.last_name %}
     {% include "includes/field.html" with field=form.first_name %}
     {% include "includes/field.html" with field=form.middle_name %}
@@ -17,11 +22,24 @@
   <div class="card-head" style="border-top:1px solid var(--border)"><i data-lucide="graduation-cap"></i><h3>O'qish joyi</h3></div>
   <div class="card-body form-grid">
     {% include "includes/field.html" with field=form.faculty %}
-    {% include "includes/field.html" with field=form.direction %}
-    {% include "includes/field.html" with field=form.group_name %}
-    {% include "includes/field.html" with field=form.course %}
-    {% include "includes/field.html" with field=form.dormitory %}
-    {% include "includes/field.html" with field=form.room %}
+    {% include "includes/field.html" with field=pf.direction %}
+    {% include "includes/field.html" with field=pf.group_name %}
+    {% include "includes/field.html" with field=pf.course %}
+    {% include "includes/field.html" with field=pf.dormitory %}
+    {% include "includes/field.html" with field=pf.room %}
+  </div>
+  <div class="card-head" style="border-top:1px solid var(--border)"><i data-lucide="contact"></i><h3>Pasport va yashash joyi</h3></div>
+  <div class="card-body form-grid">
+    {% include "includes/field.html" with field=pf.passport %}
+    {% include "includes/field.html" with field=pf.passport_issued %}
+    {% include "includes/field.html" with field=pf.pinfl %}
+    {% include "includes/field.html" with field=pf.birth_date %}
+    {% include "includes/field.html" with field=pf.gender %}
+    <div></div>
+    {% include "includes/field.html" with field=pf.region %}
+    {% include "includes/field.html" with field=pf.district %}
+    {% include "includes/field.html" with field=pf.address full=1 %}
+    {% include "includes/field.html" with field=pf.note full=1 %}
   </div>
   <div class="card-head" style="border-top:1px solid var(--border)"><i data-lucide="key-round"></i><h3>Tizimga kirish</h3></div>
   <div class="card-body form-grid">
@@ -35,4 +53,5 @@
     <button class="btn btn-primary" type="submit"><i data-lucide="save"></i> Saqlash</button>
   </div>
 </form>
+{% endwith %}
 {% endblock %}

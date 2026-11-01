@@ -3,15 +3,15 @@
 {% block crumb %}Qalqon · A'zolar{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'qalqon:member_list' %}"><i data-lucide="arrow-left"></i> A'zolar</a>
-<div class="page-head"><div><h1>A'zolarni Excel fayldan qo'shish</h1>
+<div class="page-head"><div><h1>A'zolarni fayldan qo'shish</h1>
   <div class="sub">Har bir a'zo uchun login va parol avtomatik yaratiladi. Natijani Excel ko'rinishida yuklab olib, a'zolarga tarqating.</div></div></div>
 <div class="detail-grid">
   <form method="post" enctype="multipart/form-data" class="card">{% csrf_token %}
     <div class="card-head"><i data-lucide="file-up"></i><h3>Fayl yuklash</h3></div>
     <div class="card-body" style="display:grid;gap:14px">
       <label class="dropzone" data-list="import-file">
-        <i data-lucide="file-spreadsheet"></i><div class="t">.xlsx faylni tanlang yoki shu yerga tashlang</div>
-        <input type="file" name="file" accept=".xlsx" required>
+        <i data-lucide="file-up"></i><div class="t">Excel (.xlsx) yoki Word (.docx) faylni tanlang</div>
+        <input type="file" name="file" accept=".xlsx,.docx" required>
       </label>
       {% for e in form.file.errors %}<div class="error" style="color:var(--red-text)">{{ e }}</div>{% endfor %}
       <div class="file-list" id="import-file"></div>
@@ -22,7 +22,10 @@
   <div class="card">
     <div class="card-head"><i data-lucide="info"></i><h3>Fayl tuzilishi</h3></div>
     <div class="card-body small" style="display:grid;gap:8px">
-      <div>Birinchi qatorda ustun nomlari bo'lishi kerak:</div>
+      <div><b>Word (.docx)</b> — institutning «Qalqon jamoatchilik guruhi a'zolari umumiy ro'yxati» jadvali:
+        F.I.Sh (telefon, «sardori» belgisi), Rasmi, Fakulteti-kurs-yo'nalish-guruhi, Yashash joyi va pasport ma'lumotlari.
+        Rasmlar, pasport, JSHSHIR va manzil ham saqlanadi. Qayta yuklansa, mavjud a'zolar yangilanadi.</div>
+      <div><b>Excel (.xlsx)</b> — birinchi qatorda ustun nomlari bo'lishi kerak:</div>
       <div><b>Familiya</b>, <b>Ism</b>, Otasining ismi (yoki bitta <b>F.I.Sh</b> ustuni), <b>Fakultet</b>, Yo'nalish, Guruh, Kurs, Telefon, TTJ, Xona.</div>
       <div class="muted">Login / Parol ustunlari ixtiyoriy — bo'lmasa avtomatik yaratiladi. «Rol» ustunida «sardor» yozilsa, sardor sifatida qo'shiladi.</div>
       <a class="btn btn-sm" href="{% url 'qalqon:member_import_template' %}" style="justify-self:start"><i data-lucide="download"></i> Namuna faylni yuklab olish</a>
@@ -37,6 +40,7 @@
   <div class="card-body" style="display:grid;gap:12px">
     <div class="flex flex-wrap">
       <span class="badge st-approved">Qo'shildi: {{ result.created|length }}</span>
+      {% if result.updated %}<span class="badge primary">Yangilandi: {{ result.updated|length }}</span>{% endif %}
       <span class="badge st-submitted">O'tkazib yuborildi: {{ result.skipped|length }}</span>
       <span class="badge st-overdue">Xato: {{ result.errors|length }}</span>
       {% if result.new_faculties %}<span class="badge primary">Yangi fakultetlar: {{ result.new_faculties|join:", " }}</span>{% endif %}
@@ -46,6 +50,10 @@
       <thead><tr><th>№</th><th>F.I.Sh</th><th>Fakultet</th><th>Login</th><th>Parol</th></tr></thead>
       <tbody>{% for c in result.created %}<tr><td>{{ forloop.counter }}</td><td>{{ c.user.full_name }} {{ c.user.middle_name }}</td><td class="small">{{ c.user.faculty.name }}</td><td><code>{{ c.user.username }}</code></td><td><code>{{ c.password }}</code></td></tr>{% endfor %}</tbody>
     </table></div>
+    {% endif %}
+    {% if result.warnings %}
+      <div class="label mt-2">Tekshirib ko'ring — hujjatda yetishmayotgan yoki shubhali ma'lumotlar:</div>
+      {% for n, name, w in result.warnings %}<div class="small" style="color:var(--orange-text)">• {{ n }}. {{ name }}: {{ w }}</div>{% endfor %}
     {% endif %}
     {% for s in result.skipped %}<div class="small muted">• {{ s }}</div>{% endfor %}
     {% for e in result.errors %}<div class="small" style="color:var(--red-text)">• {{ e }}</div>{% endfor %}

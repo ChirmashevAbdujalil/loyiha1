@@ -4,6 +4,7 @@ import os
 from django import forms
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
+from django.core.files.uploadedfile import UploadedFile
 from django.utils import timezone
 
 from core.models import Faculty, User
@@ -38,15 +39,46 @@ class BuildingForm(forms.ModelForm):
         }
 
 
-class MemberForm(forms.ModelForm):
-    """Qalqon a'zosi / sardor / admin hisobini yaratish va tahrirlash."""
+class MemberProfileForm(forms.ModelForm):
+    class Meta:
+        model = MemberProfile
+        fields = ["photo", "direction", "group_name", "course", "dormitory", "room", "birth_date", "gender",
+                  "passport", "passport_issued", "pinfl", "region", "district", "address", "note"]
+        widgets = {
+            "birth_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "passport_issued": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "passport": forms.TextInput(attrs={"placeholder": "AD1234567"}),
+            "pinfl": forms.TextInput(attrs={"placeholder": "14 xonali raqam", "inputmode": "numeric"}),
+            "region": forms.TextInput(attrs={"placeholder": "Andijon viloyati"}),
+            "district": forms.TextInput(attrs={"placeholder": "Buloqboshi tumani"}),
+            "photo": forms.FileInput(attrs={"accept": "image/*"}),
+        }
 
-    direction = forms.CharField(label="Yo'nalish", required=False, max_length=255)
-    group_name = forms.CharField(label="Guruh", required=False, max_length=50)
-    course = forms.IntegerField(label="Kurs", required=False, min_value=1, max_value=7)
-    dormitory = forms.ModelChoiceField(label="Yashaydigan TTJ", required=False,
-                                       queryset=Building.objects.filter(kind=Building.Kind.DORM))
-    room = forms.CharField(label="Xona", required=False, max_length=20)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["dormitory"].queryset = Building.objects.filter(kind=Building.Kind.DORM)
+        self.fields["dormitory"].empty_label = "— TTJda yashamaydi —"
+        self.fields["course"].widget = forms.Select(choices=[("", "— Kurs —")] + [(i, f"{i}-kurs") for i in range(1, 8)])
+
+    def clean_photo(self):
+        photo = self.cleaned_data.get("photo")
+        if isinstance(photo, UploadedFile):
+            validate_image(photo, required=False)
+        return photo
+
+    def clean_pinfl(self):
+        value = (self.cleaned_data.get("pinfl") or "").strip()
+        if value and not value.isdigit():
+            raise forms.ValidationError("JSHSHIR faqat raqamlardan iborat bo'ladi.")
+        return value
+
+    def clean_passport(self):
+        return (self.cleaned_data.get("passport") or "").replace(" ", "").upper()
+
+
+class MemberForm(forms.ModelForm):
+    """Qalqon a'zosi / sardor / admin hisobini yaratish va tahrirlash (shaxsiy ma'lumotlar bilan)."""
+
     password = forms.CharField(
         label="Parol", required=False,
         widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
@@ -60,8 +92,10 @@ class MemberForm(forms.ModelForm):
                   "is_active": "Faol (tizimga kira oladi)", "role": "Roli"}
         widgets = {"phone": forms.TextInput(attrs={"placeholder": "+998 90 123 45 67"})}
 
-    def __init__(self, *args, actor=None, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, data=None, files=None, *args, actor=None, **kwargs):
+        super().__init__(data, files, *args, **kwargs)
+        profile = getattr(self.instance, "qalqon_profile", None) if self.instance.pk else None
+        self.profile_form = MemberProfileForm(data, files, instance=profile)
         for name in ("first_name", "last_name", "faculty"):
             self.fields[name].required = True
         self.fields["faculty"].empty_label = "— Fakultetni tanlang —"
@@ -79,11 +113,10 @@ class MemberForm(forms.ModelForm):
             self.fields["password"].required = True
             self.fields["password"].help_text = "Kamida 6 ta belgi."
             self.fields["role"].initial = self.fields["role"].initial or User.Role.QALQON_MEMBER
-        else:
-            profile = getattr(self.instance, "qalqon_profile", None)
-            if profile:
-                for name in ("direction", "group_name", "course", "dormitory", "room"):
-                    self.fields[name].initial = getattr(profile, name)
+
+    def is_valid(self):
+        main = super().is_valid()
+        return self.profile_form.is_valid() and main
 
     def clean_role(self):
         role = self.cleaned_data["role"]
@@ -102,12 +135,13 @@ class MemberForm(forms.ModelForm):
         if self.cleaned_data.get("password"):
             user.set_password(self.cleaned_data["password"])
         user.save()
-        profile, _ = MemberProfile.objects.get_or_create(user=user)
-        profile.direction = self.cleaned_data.get("direction") or ""
-        profile.group_name = self.cleaned_data.get("group_name") or ""
-        profile.course = self.cleaned_data.get("course")
-        profile.dormitory = self.cleaned_data.get("dormitory")
-        profile.room = self.cleaned_data.get("room") or ""
+        profile = self.profile_form.save(commit=False)
+        profile.user = user
+        if profile.pinfl and not profile.birth_date:
+            from .docx_import import pinfl_info
+
+            profile.birth_date, gender = pinfl_info(profile.pinfl)
+            profile.gender = profile.gender or gender
         profile.save()
         return user
 
@@ -248,10 +282,10 @@ class ViolationForm(forms.ModelForm):
 
 
 class ImportForm(forms.Form):
-    file = forms.FileField(label="Excel fayl (.xlsx)")
+    file = forms.FileField(label="Ro'yxat fayli (.xlsx yoki .docx)")
 
     def clean_file(self):
         f = self.cleaned_data["file"]
-        if not f.name.lower().endswith(".xlsx"):
-            raise forms.ValidationError("Faqat .xlsx formatidagi fayl qabul qilinadi.")
+        if not f.name.lower().endswith((".xlsx", ".docx")):
+            raise forms.ValidationError("Faqat Excel (.xlsx) yoki Word (.docx) fayl qabul qilinadi.")
         return f

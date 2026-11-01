@@ -115,7 +115,8 @@ def build_stats(date_from, date_to, building_id=None, faculty_id=None):
     if building_id:
         duties = duties.filter(building_id=building_id)
     duty_members = list(
-        DutyMember.objects.filter(duty__in=duties).select_related("duty", "duty__building", "member", "member__faculty")
+        DutyMember.objects.filter(duty__in=duties).select_related(
+            "duty", "duty__building", "member", "member__faculty", "member__qalqon_profile")
     )
     if faculty_id:
         duty_members_for_members = [dm for dm in duty_members if dm.member.faculty_id == faculty_id]

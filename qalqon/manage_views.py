@@ -13,10 +13,10 @@ from django.views.decorators.http import require_POST
 from core.models import Faculty, User
 from core.utils import month_bounds, parse_date, uz_date, uz_datetime
 
-from . import services
-from .decorators import staff_required
+from . import docx_import, services
+from .decorators import qalqon_required, staff_required
 from .forms import BuildingForm, ImportForm, MemberForm
-from .models import Building, DutyMember, Violation
+from .models import Building, DutyMember, MemberProfile, Violation
 
 QALQON_ROLES = [User.Role.QALQON_MEMBER, User.Role.QALQON_LEADER, User.Role.QALQON_ADMIN]
 
@@ -161,18 +161,29 @@ def member_import(request):
     form = ImportForm(request.POST or None, request.FILES or None)
     result = None
     if request.method == "POST" and form.is_valid():
+        upload = form.cleaned_data["file"]
         try:
-            rows = services.read_rows(form.cleaned_data["file"])
+            if upload.name.lower().endswith(".docx"):
+                records = docx_import.parse_docx(upload)
+                saved = docx_import.save_records(records)
+                result = {
+                    "created": saved["created"], "updated": saved["updated"], "skipped": [], "errors": [],
+                    "new_faculties": saved["new_faculties"],
+                    "warnings": [(r.number, r.full_name, w) for r in records for w in r.warnings],
+                }
+            else:
+                rows = services.read_rows(upload)
+                result = services.import_members(rows, create_faculties=bool(request.POST.get("create_faculties")))
         except Exception as exc:  # noqa: BLE001 — foydalanuvchiga tushunarli xabar
             form.add_error("file", f"Faylni o'qib bo'lmadi: {exc}")
         else:
-            result = services.import_members(rows, create_faculties=bool(request.POST.get("create_faculties")))
             if result["created"]:
                 # Loginlar faylini sessiyada saqlaymiz — bir marta yuklab olish uchun
                 request.session["qalqon_credentials"] = [
-                    {"id": c["user"].pk, "password": c["password"]} for c in result["created"]
+                    {"id": c["user"].pk, "password": c["password"]} for c in result["created"] if c["password"]
                 ]
-            messages.success(request, f"{len(result['created'])} ta a'zo qo'shildi.")
+            messages.success(request, f"{len(result['created'])} ta a'zo qo'shildi"
+                                      + (f", {len(result['updated'])} tasi yangilandi." if result.get("updated") else "."))
     return render(request, "qalqon/member_import.html", {"form": form, "result": result})
 
 
@@ -461,3 +472,22 @@ def _xlsx_response(wb, filename):
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
+
+
+@qalqon_required
+def member_photo(request, pk):
+    """A'zo rasmi — faqat Qalqon foydalanuvchilariga."""
+    import mimetypes
+
+    from django.http import FileResponse, Http404
+
+    profile = get_object_or_404(MemberProfile, user_id=pk)
+    if not profile.photo:
+        raise Http404
+    try:
+        handle = profile.photo.open("rb")
+    except FileNotFoundError:
+        raise Http404
+    response = FileResponse(handle, content_type=mimetypes.guess_type(profile.photo.name)[0] or "image/jpeg")
+    response["Cache-Control"] = "private, max-age=3600"
+    return response

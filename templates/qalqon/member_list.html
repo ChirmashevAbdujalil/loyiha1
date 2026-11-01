@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load core_tags %}
+{% load core_tags qalqon_tags %}
 {% block title %}Qalqon a'zolari{% endblock %}
 {% block crumb %}Qalqon · A'zolar{% endblock %}
 {% block content %}
@@ -44,12 +44,12 @@
         <tr class="group-row"><td colspan="8"><i data-lucide="building-2" style="width:14px;height:14px;vertical-align:-2px"></i> {{ faculty.name|default:'Fakultetsiz' }} · {{ members|length }} nafar</td></tr>
         {% for u in members %}
         <tr>
-          <td><a class="person" href="{% url 'qalqon:member_detail' u.pk %}"><span class="avatar">{{ u.initials }}</span><div>
+          <td><a class="person" href="{% url 'qalqon:member_detail' u.pk %}">{% member_avatar u %}<div>
             <div class="n">{{ u.full_name }}{% if u.role == 'qalqon_leader' %} <span class="badge primary" style="height:18px;font-size:10px">sardor</span>{% elif u.role == 'qalqon_admin' %} <span class="badge st-submitted" style="height:18px;font-size:10px">admin</span>{% endif %}</div>
             <div class="s">{{ u.middle_name }} · <code>{{ u.username }}</code>{% if not u.is_active %} · <span style="color:var(--red-text)">nofaol</span>{% endif %}</div></div></a></td>
           <td class="small">{{ u.profile.direction|default:'—' }}</td>
           <td class="nowrap">{{ u.profile.group_name|default:'—' }}</td>
-          <td>{% if u.profile.course %}{{ u.profile.course }}-kurs{% else %}—{% endif %}</td>
+          <td class="nowrap">{% if u.profile.course %}{{ u.profile.course }}-kurs{% else %}—{% endif %}</td>
           <td class="nowrap small">{{ u.phone|default:'—' }}</td>
           <td class="small">{% if u.profile.dormitory %}{{ u.profile.dormitory.label }}{% if u.profile.room %}, {{ u.profile.room }}{% endif %}{% else %}—{% endif %}</td>
           <td><div class="mini-stats">

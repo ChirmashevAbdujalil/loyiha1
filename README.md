@@ -86,6 +86,23 @@ Sozlamalar (muhit o'zgaruvchilari): `QALQON_START_EARLY_MINUTES` (60),
 
 ### A'zolar ro'yxatini bazaga qo'shish
 
+**Word (.docx) ro'yxatdan** (institutning «Qalqon jamoatchilik guruhi a'zolari umumiy ro'yxati» jadvali —
+F.I.Sh va telefon, «sardori» belgisi, rasm, fakultet/kurs/yo'nalish/guruh, pasport, JSHSHIR, manzil):
+
+```bash
+python manage.py import_qalqon_docx "Qalqon_jamoatchilik_guruhi.docx" --dry-run   # avval tekshirish
+python manage.py import_qalqon_docx "Qalqon_jamoatchilik_guruhi.docx"
+```
+
+Rasmlar, pasport, JSHSHIR (undan tug'ilgan sana va jins aniqlanadi) va manzil (viloyat, tuman, ko'cha)
+ham saqlanadi; fakultetlar avtomatik yaratiladi. Kurs ko'rsatilmagan bo'lsa, guruh raqamidagi yildan
+hisoblanadi (`--year 2026`). Qayta ishga tushirilsa, dublikat yaratilmaydi — ma'lumotlar yangilanadi.
+Hujjatdagi yetishmayotgan yoki shubhali ma'lumotlar (12 xonali JSHSHIR, noto'g'ri pasport raqami va h.k.)
+ekranga chiqariladi. Xuddi shuni sayt orqali ham qilish mumkin: **Qalqon → A'zolar → Exceldan import**
+(.docx ham qabul qilinadi). Pasport va JSHSHIR faqat sardor va admin uchun ko'rinadi.
+
+**Excel (.xlsx) ro'yxatdan:**
+
 ```bash
 python manage.py import_qalqon_members azolar.xlsx
 ```

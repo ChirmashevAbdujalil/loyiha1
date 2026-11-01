@@ -57,10 +57,28 @@ class Building(models.Model):
         return self.short_name or self.name
 
 
+def member_photo_path(instance, filename):
+    ext = os.path.splitext(filename)[1].lower() or ".jpg"
+    return f"qalqon/members/{instance.user_id}{ext}"
+
+
 class MemberProfile(models.Model):
-    """Qalqon a'zosining talabalik ma'lumotlari (asosiy ma'lumotlar User'da)."""
+    """Qalqon a'zosining talabalik va shaxsiy ma'lumotlari (F.I.Sh, telefon, fakultet — User'da)."""
+
+    class Gender(models.TextChoices):
+        MALE = "m", "Erkak"
+        FEMALE = "f", "Ayol"
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="qalqon_profile")
+    photo = models.FileField("Rasmi", upload_to=member_photo_path, blank=True)
+    birth_date = models.DateField("Tug'ilgan sanasi", null=True, blank=True)
+    gender = models.CharField("Jinsi", max_length=1, choices=Gender.choices, blank=True)
+    passport = models.CharField("Pasport seriya va raqami", max_length=20, blank=True)
+    passport_issued = models.DateField("Pasport berilgan sana", null=True, blank=True)
+    pinfl = models.CharField("JSHSHIR", max_length=14, blank=True, db_index=True)
+    region = models.CharField("Viloyat", max_length=100, blank=True)
+    district = models.CharField("Tuman / shahar", max_length=100, blank=True)
+    address = models.CharField("Yashash manzili", max_length=500, blank=True)
     direction = models.CharField("Yo'nalish", max_length=255, blank=True)
     group_name = models.CharField("Guruh", max_length=50, blank=True)
     course = models.PositiveSmallIntegerField("Kurs", null=True, blank=True,
@@ -76,6 +94,19 @@ class MemberProfile(models.Model):
 
     def __str__(self):
         return str(self.user)
+
+    @property
+    def age(self):
+        if not self.birth_date:
+            return None
+        today = timezone.localdate()
+        return today.year - self.birth_date.year - (
+            (today.month, today.day) < (self.birth_date.month, self.birth_date.day)
+        )
+
+    @property
+    def full_address(self):
+        return ", ".join(p for p in (self.region, self.district, self.address) if p)
 
 
 class Duty(models.Model):

@@ -120,7 +120,7 @@
           <div class="mt-2">
             {% for dm in d.dms %}
               <div class="member-line">
-                <span class="avatar sm">{{ dm.member.initials }}</span>
+                {% member_avatar dm.member "sm" %}
                 <a class="grow" href="{% qs member=dm.member_id %}" style="color:var(--text);font-weight:600" title="Shu a'zoning naryadlarini ko'rsatish">{{ dm.member.full_name }}</a>
                 <span class="badge qs-{{ dm.display_status }}" style="height:20px;font-size:11px">{{ dm.display_status_label }}</span>
               </div>

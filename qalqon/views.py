@@ -64,7 +64,7 @@ def calendar(request):
     duties = (
         Duty.objects.filter(date__range=(weeks[0][0], weeks[-1][-1]))
         .select_related("building")
-        .prefetch_related("duty_members__member", "duty_members__duty")
+        .prefetch_related("duty_members__member__qalqon_profile", "duty_members__duty")
         .order_by("date", "start_time")
     )
     if building_id:

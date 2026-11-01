@@ -695,3 +695,11 @@ a.duty-card:hover { border-color: var(--primary-100); box-shadow: var(--shadow);
 .login-art.qalqon { background: radial-gradient(circle at 20% 20%, #0f5444, #0d1f1a 60%); }
 .login-art.qalqon::after { background: radial-gradient(circle, rgba(16, 185, 129, .45), transparent 70%); }
 .gps-big { font-size: 34px; font-weight: 800; letter-spacing: -.02em; }
+.avatar-img { object-fit: cover; background: var(--gray-bg); padding: 0; }
+.avatar.xl { width: 96px; height: 96px; border-radius: 18px; font-size: 26px; }
+.person-photo { width: 120px; height: 150px; border-radius: 14px; object-fit: cover; border: 1px solid var(--border); background: var(--gray-bg); }
+.kv { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 8px 14px; font-size: 13.5px; }
+.kv dt { color: var(--text-2); }
+.kv dd { margin: 0; font-weight: 600; word-break: break-word; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .02em; }
+@media (max-width: 900px) { .kv { grid-template-columns: 1fr; gap: 2px; } .kv dd { margin-bottom: 8px; } }

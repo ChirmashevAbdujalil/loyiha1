@@ -5,7 +5,7 @@
 {% block content %}
 <a class="back-link" href="{% url 'qalqon:member_list' %}"><i data-lucide="arrow-left"></i> A'zolar</a>
 <div class="page-head">
-  <span class="avatar lg">{{ member.initials }}</span>
+  {% if profile.photo %}<img class="person-photo" style="width:72px;height:90px" src="{% url 'qalqon:member_photo' member.pk %}" alt="">{% else %}<span class="avatar lg">{{ member.initials }}</span>{% endif %}
   <div>
     <h1>{{ member.full_name }} {{ member.middle_name }}</h1>
     <div class="sub flex flex-wrap">
@@ -27,6 +27,27 @@
       <button class="btn btn-danger" type="submit"><i data-lucide="trash-2"></i></button>
     </form>
     {% endif %}
+  </div>
+</div>
+<div class="card mb-3">
+  <div class="card-head"><i data-lucide="contact"></i><h3>Shaxsiy ma'lumotlar</h3><span class="small muted right"><i data-lucide="lock" style="width:13px;height:13px;vertical-align:-2px"></i> faqat sardor va admin ko'radi</span></div>
+  <div class="card-body flex flex-wrap" style="gap:24px;align-items:flex-start">
+    {% if profile.photo %}<a href="{% url 'qalqon:member_photo' member.pk %}" target="_blank"><img class="person-photo" src="{% url 'qalqon:member_photo' member.pk %}" alt=""></a>{% endif %}
+    <dl class="kv grow">
+      <dt>F.I.Sh</dt><dd>{{ member.full_name }} {{ member.middle_name }}</dd>
+      <dt>Lavozimi</dt><dd>{{ member.position|default:member.get_role_display }}</dd>
+      <dt>Telefon</dt><dd>{% if member.phone %}<a href="tel:{{ member.phone|cut:' ' }}">{{ member.phone }}</a>{% else %}—{% endif %}</dd>
+      <dt>Tug'ilgan sanasi</dt><dd>{% if profile.birth_date %}{{ profile.birth_date|uz_date }} <span class="muted">({{ profile.age }} yosh)</span>{% else %}—{% endif %}</dd>
+      <dt>Jinsi</dt><dd>{{ profile.get_gender_display|default:'—' }}</dd>
+      <dt>Fakultet</dt><dd>{{ member.faculty.name|default:'—' }}</dd>
+      <dt>Yo'nalish</dt><dd>{{ profile.direction|default:'—' }}</dd>
+      <dt>Guruh, kurs</dt><dd>{{ profile.group_name|default:'—' }}{% if profile.course %}, {{ profile.course }}-kurs{% endif %}</dd>
+      <dt>Pasport</dt><dd class="mono">{{ profile.passport|default:'—' }}{% if profile.passport_issued %} <span class="muted" style="font-family:inherit">· berilgan: {{ profile.passport_issued|date:'d.m.Y' }}</span>{% endif %}</dd>
+      <dt>JSHSHIR</dt><dd class="mono">{{ profile.pinfl|default:'—' }}{% if profile.pinfl and profile.pinfl|length != 14 %} <span class="badge st-overdue" style="font-family:inherit">14 xonali emas</span>{% endif %}</dd>
+      <dt>Yashash manzili</dt><dd>{{ profile.full_address|default:'—' }}</dd>
+      {% if profile.dormitory %}<dt>TTJ</dt><dd>{{ profile.dormitory.name }}{% if profile.room %}, {{ profile.room }}-xona{% endif %}</dd>{% endif %}
+      {% if profile.note %}<dt>Izoh</dt><dd>{{ profile.note }}</dd>{% endif %}
+    </dl>
   </div>
 </div>
 <div class="stats">

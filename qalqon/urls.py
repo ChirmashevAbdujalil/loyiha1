@@ -35,6 +35,7 @@ urlpatterns = [
     path("azolar/import/shablon/", mv.member_import_template, name="member_import_template"),
     path("azolar/import/loginlar/", mv.member_import_credentials, name="member_import_credentials"),
     path("azolar/<int:pk>/", mv.member_detail, name="member_detail"),
+    path("azolar/<int:pk>/rasm/", mv.member_photo, name="member_photo"),
     path("azolar/<int:pk>/tahrirlash/", mv.member_edit, name="member_edit"),
     path("azolar/<int:pk>/ochirish/", mv.member_delete, name="member_delete"),
 

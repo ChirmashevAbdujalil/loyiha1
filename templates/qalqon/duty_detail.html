@@ -55,7 +55,7 @@
           <tbody>
           {% for dm in dms %}
             <tr>
-              <td><div class="person"><span class="avatar">{{ dm.member.initials }}</span><div>
+              <td><div class="person">{% member_avatar dm.member %}<div>
                 <div class="n">{% if is_staff %}<a href="{% url 'qalqon:member_detail' dm.member_id %}" style="color:inherit">{{ dm.member.full_name }}</a>{% else %}{{ dm.member.full_name }}{% endif %}</div>
                 <div class="s">{{ dm.member.faculty.label|default:'' }}{% if dm.member.qalqon_profile.group_name %} · {{ dm.member.qalqon_profile.group_name }}{% endif %}{% if is_staff and dm.member.phone %} · {{ dm.member.phone }}{% endif %}</div></div></div></td>
               <td><span class="badge qs-{{ dm.display_status }}"><i data-lucide="{{ dm.display_status|duty_icon }}"></i> {{ dm.display_status_label }}</span></td>

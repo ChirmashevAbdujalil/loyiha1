@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load core_tags %}
+{% load core_tags qalqon_tags %}
 {% block title %}{% if duty %}Naryadni tahrirlash{% else %}Naryad qo'yish{% endif %}{% endblock %}
 {% block crumb %}Qalqon · Naryad qo'yish{% endblock %}
 {% block head %}{% include "qalqon/_leaflet.html" %}{% endblock %}
@@ -51,7 +51,7 @@
                   <label class="picker-item{% if u.checked %} on{% endif %}" data-id="{{ u.pk }}" data-course="{{ u.profile.course|default:'' }}"
                          data-name="{{ u.full_name|lower }} {{ u.profile.group_name|lower }} {{ u.profile.direction|lower }}">
                     <input type="checkbox" name="members" value="{{ u.pk }}" {% if u.checked %}checked{% endif %} data-label="{{ u.short_name }}">
-                    <span class="avatar sm">{{ u.initials }}</span>
+                    {% member_avatar u "sm" %}
                     <div class="grow">
                       <div class="n">{{ u.full_name }}{% if u.role == 'qalqon_leader' %} <span class="badge primary" style="height:18px;font-size:10px">sardor</span>{% endif %} <span class="badge st-submitted busy-badge hidden" style="height:18px;font-size:10px">band</span></div>
                       <div class="s">{% if u.profile.course %}{{ u.profile.course }}-kurs · {% endif %}{{ u.profile.group_name|default:'' }}{% if u.profile.direction %} · {{ u.profile.direction }}{% endif %}{% if u.phone %} · {{ u.phone }}{% endif %}</div>

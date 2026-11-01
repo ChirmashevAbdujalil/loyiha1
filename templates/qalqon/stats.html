@@ -108,7 +108,7 @@
       <tbody>
       {% for r in recorder_rows %}
         <tr>
-          <td><a class="person" href="{% url 'qalqon:member_detail' r.member.pk %}"><span class="avatar sm">{{ r.member.initials }}</span><span class="n">{{ r.member.full_name }}</span></a></td>
+          <td><a class="person" href="{% url 'qalqon:member_detail' r.member.pk %}">{% member_avatar r.member "sm" %}<span class="n">{{ r.member.full_name }}</span></a></td>
           <td><span class="badge st-overdue">{{ r.total }}</span></td>
           <td><div class="mini-stats">{% for label, c in r.categories %}<span class="badge plain">{{ label }}: {{ c }}</span>{% endfor %}</div></td>
         </tr>
@@ -126,7 +126,7 @@
       <tbody>
       {% for r in member_rows %}
         <tr>
-          <td><a class="person" href="{% url 'qalqon:member_detail' r.member.pk %}"><span class="avatar sm">{{ r.member.initials }}</span><span class="n">{{ r.member.full_name }}</span></a></td>
+          <td><a class="person" href="{% url 'qalqon:member_detail' r.member.pk %}">{% member_avatar r.member "sm" %}<span class="n">{{ r.member.full_name }}</span></a></td>
           <td class="small">{{ r.member.faculty.label|default:'—' }}</td>
           <td>{{ r.total }}</td>
           <td><span class="badge qs-finished">{{ r.finished }}</span></td>

@@ -247,3 +247,102 @@ class PlatformSeparationTests(TestCase):
     def test_qalqon_login_page(self):
         r = self.client.post(reverse("qalqon:login"), {"username": "a1", "password": "x12345"})
         self.assertRedirects(r, reverse("qalqon:calendar"))
+
+
+def _make_docx(rows, with_photo=True):
+    """Sinov uchun institut ro'yxati shaklidagi .docx (to'qima ma'lumotlar)."""
+    from docx import Document
+    from PIL import Image
+
+    doc = Document()
+    doc.add_paragraph("“Qalqon” jamoatchilik guruhi a’zolari umumiy roʻyhati")
+    table = doc.add_table(rows=1, cols=5)
+    for cell, text in zip(table.rows[0].cells, ["T/R", "F.I.SH, Tugʻilgan yili va joyi", "Rasmi",
+                                                "Fakulteti,kurs, yoʻnalish va guruhi",
+                                                "Yashash joyi va pasport ma’lumotlari"]):
+        cell.text = text
+    img = BytesIO()
+    Image.new("RGB", (40, 50), (120, 80, 60)).save(img, "PNG")
+    for i, (name, study, personal) in enumerate(rows, 1):
+        cells = table.add_row().cells
+        cells[0].text, cells[1].text, cells[3].text, cells[4].text = str(i), name, study, personal
+        if with_photo:
+            img.seek(0)
+            cells[2].paragraphs[0].add_run().add_picture(img)
+    out = BytesIO()
+    doc.save(out)
+    out.seek(0)
+    out.name = "azolar.docx"
+    return out
+
+
+SAMPLE_ROWS = [
+    ("Sinovov Anvar Bahodir oʻgʻli\n“Qalqon” jamoatchilik guruhi sardori\n(97)-111-22-33",
+     "Mexanika va kimyo muhandisligi fakulteti 4-bosqich K-07-23-guruh talabasi",
+     "AE1234567\n50101055000017\nAndijon viloyati Buloqboshi tumani Navroʻz MFY 1-uy"),
+    ("Namunova Sardorbek Ali ogʻli\n(90)-222-33-44",  # ismida "Sardor" bor, lekin sardor emas
+     "Iqdisodiyot va boshqaruv fakulteti Moliya va moliyaviy texnalogiyalar K-16-25 guruh talabasi",
+     "AD 7654321\n62706065000011\nFargʻona viloyati Quva tumani Namuna mfy 5-uy"),
+    ("Misolova Laylo\n(94)-333-44-55",
+     "IB va KT fakulteti | Mextronika va robototexmika yoʻnalishi K 24-25 | guruh talabasi",
+     "AD 123456789\n537250000000 | Oltinkol tumani, Namuna MFY"),
+]
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class DocxImportTests(TestCase):
+    def test_parse(self):
+        from .docx_import import parse_docx
+
+        recs = parse_docx(_make_docx(SAMPLE_ROWS))
+        a, b, c = recs
+        self.assertEqual((a.last_name, a.first_name, a.middle_name), ("Sinovov", "Anvar", "Bahodir oʻgʻli"))
+        self.assertTrue(a.is_leader)
+        self.assertFalse(b.is_leader)
+        self.assertEqual(a.phone, "+998 97 111 22 33")
+        self.assertEqual((a.faculty_short, a.group_name, a.course, a.course_derived), ("MKMF", "K-07-23", 4, False))
+        self.assertEqual((a.passport, a.pinfl, a.birth_date, a.gender),
+                         ("AE1234567", "50101055000017", dt.date(2005, 1, 1), "m"))
+        self.assertEqual((a.region, a.district, a.address), ("Andijon viloyati", "Buloqboshi tumani", "Navroʻz MFY 1-uy"))
+        self.assertIsNotNone(a.photo)
+        self.assertEqual(b.middle_name, "Ali oʻgʻli")
+        self.assertEqual((b.faculty_short, b.direction, b.course, b.course_derived),
+                         ("IBF", "Moliya va moliyaviy texnologiyalar", 2, True))
+        self.assertEqual(b.gender, "f")  # JSHSHIR 6 bilan boshlanadi
+        self.assertTrue(any("jins" in w for w in b.warnings))
+        self.assertEqual((c.faculty_short, c.direction, c.group_name), ("IBKTF", "Mexatronika va robototexnika", "K-24-25"))
+        self.assertTrue(any("9 xonali" in w for w in c.warnings))
+        self.assertTrue(any("JSHSHIR 12" in w for w in c.warnings))
+        self.assertEqual(c.region, "")
+
+    def test_save_is_idempotent(self):
+        from .docx_import import parse_docx, save_records
+
+        result = save_records(parse_docx(_make_docx(SAMPLE_ROWS)))
+        self.assertEqual(len(result["created"]), 3)
+        self.assertEqual(len(result["new_faculties"]), 3)
+        leader = User.objects.get(last_name="Sinovov")
+        self.assertEqual(leader.role, User.Role.QALQON_LEADER)
+        self.assertTrue(leader.check_password(result["created"][0]["password"]))
+        p = leader.qalqon_profile
+        self.assertTrue(p.photo)
+        self.assertEqual(p.pinfl, "50101055000017")
+        self.assertEqual(User.objects.get(last_name="Namunova").role, User.Role.QALQON_MEMBER)
+
+        again = save_records(parse_docx(_make_docx(SAMPLE_ROWS)))
+        self.assertEqual((len(again["created"]), len(again["updated"])), (0, 3))
+        self.assertEqual(User.objects.filter(role__startswith="qalqon").count(), 3)
+
+    def test_web_upload_and_detail(self):
+        boss = User.objects.create_user("boss", password="x12345", role=User.Role.QALQON_ADMIN)
+        self.client.force_login(boss)
+        r = self.client.post(reverse("qalqon:member_import"), {"file": _make_docx(SAMPLE_ROWS)})
+        self.assertContains(r, "Qo'shildi: 3")
+        u = User.objects.get(last_name="Sinovov")
+        r = self.client.get(reverse("qalqon:member_detail", args=[u.pk]))
+        self.assertContains(r, "AE1234567")
+        self.assertContains(r, "Buloqboshi tumani")
+        self.assertEqual(self.client.get(reverse("qalqon:member_photo", args=[u.pk])).status_code, 200)
+        # Oddiy a'zo pasport ma'lumotlarini ko'ra olmaydi
+        self.client.force_login(User.objects.get(last_name="Namunova"))
+        self.assertEqual(self.client.get(reverse("qalqon:member_detail", args=[u.pk])).status_code, 403)
