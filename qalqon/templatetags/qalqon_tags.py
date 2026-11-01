@@ -37,8 +37,19 @@ def meters(value):
 def member_avatar(user, size=""):
     """A'zo rasmi (bo'lsa) yoki ism-familiya bosh harflari."""
     cls = f"avatar {size}".strip()
-    profile = getattr(user, "qalqon_profile", None)
-    if profile is not None and profile.photo:
-        return format_html('<img class="{} avatar-img" src="{}" alt="" loading="lazy">', cls,
-                           reverse("qalqon:member_photo", args=[user.pk]))
+    url = member_photo_url(user)
+    if url:
+        return format_html('<img class="{} avatar-img" src="{}" alt="" loading="lazy">', cls, url)
     return format_html('<span class="{}">{}</span>', cls, user.initials)
+
+
+@register.simple_tag
+def member_photo_url(user):
+    """Rasm manzili; ?v= fayl nomidan — rasm almashtirilsa, brauzer yangisini yuklaydi."""
+    import hashlib
+
+    profile = getattr(user, "qalqon_profile", None)
+    if profile is None or not profile.photo:
+        return ""
+    version = hashlib.md5(profile.photo.name.encode()).hexdigest()[:8]
+    return f"{reverse('qalqon:member_photo', args=[user.pk])}?v={version}"

@@ -4,6 +4,7 @@ import os
 from django import forms
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
+from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import UploadedFile
 from django.utils import timezone
 
@@ -135,8 +136,19 @@ class MemberForm(forms.ModelForm):
         if self.cleaned_data.get("password"):
             user.set_password(self.cleaned_data["password"])
         user.save()
+        old_photo = self.profile_form.initial.get("photo")
+        new_photo = self.profile_form.cleaned_data.get("photo")
         profile = self.profile_form.save(commit=False)
         profile.user = user
+        if isinstance(new_photo, UploadedFile):
+            from .docx_import import _photo_file
+
+            new_photo.seek(0)
+            blob, ext = _photo_file(new_photo.read())
+            profile.photo.save(f"{user.pk}{ext or os.path.splitext(new_photo.name)[1].lower()}",
+                               ContentFile(blob), save=False)
+            if old_photo and old_photo.name and old_photo.name != profile.photo.name:
+                old_photo.storage.delete(old_photo.name)
         if profile.pinfl and not profile.birth_date:
             from .docx_import import pinfl_info
 

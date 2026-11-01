@@ -374,3 +374,56 @@ class BundleAndCleanupTests(TestCase):
             self.assertTrue(u.check_password(item["password"]))
             self.assertTrue(u.qalqon_profile.photo)
         self.assertEqual(import_bundle(out)["updated"], 3)
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class MemberPhotoUploadTests(TestCase):
+    def setUp(self):
+        self.faculty = Faculty.objects.create(name="Sinov fakulteti")
+        self.admin = User.objects.create_user("adm", password="x12345", role=User.Role.QALQON_ADMIN)
+        self.member = User.objects.create_user("m1", password="x12345", role=User.Role.QALQON_MEMBER,
+                                               first_name="Anvar", last_name="Sinovov", faculty=self.faculty)
+        MemberProfile.objects.create(user=self.member)
+        self.client.force_login(self.admin)
+
+    def _post_edit(self, color):
+        from PIL import Image
+
+        buf = BytesIO()
+        Image.new("RGB", (30, 40), color).save(buf, "PNG")
+        return self.client.post(reverse("qalqon:member_edit", args=[self.member.pk]), {
+            "last_name": "Sinovov", "first_name": "Anvar", "faculty": self.faculty.pk,
+            "role": User.Role.QALQON_MEMBER, "username": "m1", "is_active": "on",
+            "photo": SimpleUploadedFile("rasm.png", buf.getvalue(), content_type="image/png"),
+        })
+
+    def test_edit_saves_photo_and_url_changes(self):
+        r = self._post_edit((200, 0, 0))
+        self.assertEqual(r.status_code, 302)
+        p = MemberProfile.objects.get(user=self.member)
+        self.assertTrue(p.photo, "rasm saqlanmadi")
+        first_name = p.photo.name
+        r = self.client.get(reverse("qalqon:member_detail", args=[self.member.pk]))
+        self.assertContains(r, reverse("qalqon:member_photo", args=[self.member.pk]))
+        photo = self.client.get(reverse("qalqon:member_photo", args=[self.member.pk]))
+        self.assertEqual(photo.status_code, 200)
+
+        # Rasm almashtirilsa — yangi fayl, eski fayl o'chadi, manzil (versiya) o'zgaradi
+        self._post_edit((0, 0, 200))
+        p.refresh_from_db()
+        self.assertNotEqual(p.photo.name, first_name)
+        self.assertFalse(p.photo.storage.exists(first_name))
+        r = self.client.get(reverse("qalqon:member_detail", args=[self.member.pk]))
+        self.assertContains(r, f"?v=")
+
+    def test_create_with_photo(self):
+        from PIL import Image
+
+        buf = BytesIO()
+        Image.new("RGB", (30, 40)).save(buf, "PNG")
+        self.client.post(reverse("qalqon:member_create"), {
+            "last_name": "Yangi", "first_name": "A'zo", "faculty": self.faculty.pk,
+            "role": User.Role.QALQON_MEMBER, "username": "yangi", "password": "parol12345", "is_active": "on",
+            "photo": SimpleUploadedFile("r.png", buf.getvalue(), content_type="image/png"),
+        })
+        self.assertTrue(User.objects.get(username="yangi").qalqon_profile.photo)

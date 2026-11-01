@@ -103,7 +103,7 @@ def member_create(request):
     initial = {}
     if request.GET.get("faculty"):
         initial["faculty"] = request.GET["faculty"]
-    form = MemberForm(request.POST or None, actor=request.user, initial=initial)
+    form = MemberForm(request.POST or None, request.FILES or None, actor=request.user, initial=initial)
     if request.method == "POST" and form.is_valid():
         user = form.save()
         messages.success(request, f"{user.full_name} qo'shildi ({user.get_role_display()}). Login: {user.username}")
@@ -117,7 +117,7 @@ def member_create(request):
 def member_edit(request, pk):
     user = get_object_or_404(User, pk=pk)
     _check_can_edit(request.user, user)
-    form = MemberForm(request.POST or None, instance=user, actor=request.user)
+    form = MemberForm(request.POST or None, request.FILES or None, instance=user, actor=request.user)
     if request.method == "POST" and form.is_valid():
         form.save()
         messages.success(request, "Ma'lumotlar saqlandi.")

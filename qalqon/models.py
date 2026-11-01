@@ -58,8 +58,11 @@ class Building(models.Model):
 
 
 def member_photo_path(instance, filename):
+    # Har safar yangi nom — brauzer keshida eski rasm qolib ketmasligi uchun
+    import secrets
+
     ext = os.path.splitext(filename)[1].lower() or ".jpg"
-    return f"qalqon/members/{instance.user_id}{ext}"
+    return f"qalqon/members/{instance.user_id}_{secrets.token_hex(4)}{ext}"
 
 
 class MemberProfile(models.Model):

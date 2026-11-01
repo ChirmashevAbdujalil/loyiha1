@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load qalqon_tags %}
 {% block title %}{% if member %}A'zoni tahrirlash{% else %}Yangi a'zo{% endif %}{% endblock %}
 {% block crumb %}Qalqon · A'zolar{% endblock %}
 {% block content %}
@@ -9,7 +10,7 @@
   {% if form.non_field_errors %}<div class="card-body"><div class="alert alert-danger">{{ form.non_field_errors }}</div></div>{% endif %}
   <div class="card-head"><i data-lucide="id-card"></i><h3>Shaxsiy ma'lumotlar</h3></div>
   <div class="card-body flex" style="gap:16px;align-items:center">
-    {% if member and member.qalqon_profile.photo %}<img class="person-photo" src="{% url 'qalqon:member_photo' member.pk %}" alt="">{% else %}<span class="avatar xl">{% if member %}{{ member.initials }}{% else %}<i data-lucide="user"></i>{% endif %}</span>{% endif %}
+    {% if member and member.qalqon_profile.photo %}<img class="person-photo" src="{% member_photo_url member %}" alt="">{% else %}<span class="avatar xl">{% if member %}{{ member.initials }}{% else %}<i data-lucide="user"></i>{% endif %}</span>{% endif %}
     <div class="field grow"><label for="id_photo">Rasmi</label>{{ pf.photo }}<div class="help">JPG yoki PNG, 15 MB gacha.</div>{% for e in pf.photo.errors %}<div class="error">{{ e }}</div>{% endfor %}</div>
   </div>
   <div class="card-body form-grid" style="padding-top:0">

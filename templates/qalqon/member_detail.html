@@ -5,7 +5,7 @@
 {% block content %}
 <a class="back-link" href="{% url 'qalqon:member_list' %}"><i data-lucide="arrow-left"></i> A'zolar</a>
 <div class="page-head">
-  {% if profile.photo %}<img class="person-photo" style="width:72px;height:90px" src="{% url 'qalqon:member_photo' member.pk %}" alt="">{% else %}<span class="avatar lg">{{ member.initials }}</span>{% endif %}
+  {% if profile.photo %}<img class="person-photo" style="width:72px;height:90px" src="{% member_photo_url member %}" alt="">{% else %}<span class="avatar lg">{{ member.initials }}</span>{% endif %}
   <div>
     <h1>{{ member.full_name }} {{ member.middle_name }}</h1>
     <div class="sub flex flex-wrap">
@@ -32,7 +32,7 @@
 <div class="card mb-3">
   <div class="card-head"><i data-lucide="contact"></i><h3>Shaxsiy ma'lumotlar</h3><span class="small muted right"><i data-lucide="lock" style="width:13px;height:13px;vertical-align:-2px"></i> faqat sardor va admin ko'radi</span></div>
   <div class="card-body flex flex-wrap" style="gap:24px;align-items:flex-start">
-    {% if profile.photo %}<a href="{% url 'qalqon:member_photo' member.pk %}" target="_blank"><img class="person-photo" src="{% url 'qalqon:member_photo' member.pk %}" alt=""></a>{% endif %}
+    {% if profile.photo %}{% member_photo_url member as photo_url %}<a href="{{ photo_url }}" target="_blank"><img class="person-photo" src="{{ photo_url }}" alt=""></a>{% endif %}
     <dl class="kv grow">
       <dt>F.I.Sh</dt><dd>{{ member.full_name }} {{ member.middle_name }}</dd>
       <dt>Lavozimi</dt><dd>{{ member.position|default:member.get_role_display }}</dd>
