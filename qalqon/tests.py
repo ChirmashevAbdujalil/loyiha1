@@ -207,3 +207,43 @@ class DutyFlowTests(TestCase):
         self.assertEqual(u.qalqon_profile.course, 2)
         self.assertTrue(u.check_password(result["created"][0]["password"]))
         self.assertTrue(MemberProfile.objects.filter(user__last_name="Yangi").exists())
+
+
+class PlatformSeparationTests(TestCase):
+    def setUp(self):
+        self.head = User.objects.create_user("boss", password="x12345", role=User.Role.HEAD)
+        self.member = User.objects.create_user("a1", password="x12345", role=User.Role.QALQON_MEMBER)
+        self.tutor = User.objects.create_user("t1", password="x12345", role=User.Role.TUTOR)
+        Notification.objects.create(user=self.head, kind="duty", title="Qalqon xabari")
+        Notification.objects.create(user=self.head, kind="new_task", title="Ijro xabari")
+
+    def test_sidebar_shows_only_current_platform(self):
+        self.client.force_login(self.head)
+        r = self.client.get(reverse("dashboard"))
+        self.assertContains(r, "Tasdiqlash uchun")
+        self.assertNotContains(r, "Binolar va TTJ")
+        self.assertContains(r, "platform-switch")
+        r = self.client.get(reverse("qalqon:calendar"))
+        self.assertContains(r, "Binolar va TTJ")
+        self.assertNotContains(r, "Tasdiqlash uchun")
+
+    def test_notifications_are_split(self):
+        self.client.force_login(self.head)
+        data = self.client.get(reverse("notification_feed") + "?p=qalqon").json()
+        self.assertEqual([i["title"] for i in data["items"]], ["Qalqon xabari"])
+        data = self.client.get(reverse("notification_feed") + "?p=ijro").json()
+        self.assertEqual([i["title"] for i in data["items"]], ["Ijro xabari"])
+
+    def test_single_platform_users(self):
+        self.client.force_login(self.member)
+        r = self.client.get(reverse("qalqon:calendar"))
+        self.assertNotContains(r, "platform-switch")
+        self.assertEqual(self.client.get(reverse("dashboard")).status_code, 302)
+        self.client.force_login(self.tutor)
+        r = self.client.get(reverse("dashboard"))
+        self.assertNotContains(r, "platform-switch")
+        self.assertEqual(self.client.get(reverse("qalqon:calendar")).status_code, 403)
+
+    def test_qalqon_login_page(self):
+        r = self.client.post(reverse("qalqon:login"), {"username": "a1", "password": "x12345"})
+        self.assertRedirects(r, reverse("qalqon:calendar"))

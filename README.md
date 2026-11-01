@@ -41,6 +41,13 @@ bildirishnoma kelganda ekranda xabar (toast) va brauzer bildirishnomasi chiqadi.
 
 ## Qalqon jamoatchilik guruhi moduli (`/qalqon/`)
 
+Ijro tizimi va Qalqon — **ikki alohida platforma**: har birining o'z menyusi, logotipi,
+kirish sahifasi (`/login/` va `/qalqon/kirish/`) va bildirishnomalari bor. Ikkalasiga ham
+huquqi bor foydalanuvchida (bo'lim boshlig'i) menyuning yuqorisida "Ijro | Qalqon"
+almashtirgichi chiqadi. Qalqon a'zolari ijro tizimini, tyutorlar Qalqonni ko'rmaydi.
+**GPS tekshiruvi** sahifasida (`/qalqon/gps-tekshiruv/`) a'zo telefoni joylashuvni to'g'ri
+aniqlayotganini va binolargacha masofani oldindan sinab ko'rishi mumkin.
+
 Uchta rol: **umumiy admin** (bo'lim boshlig'i ham admin huquqiga ega), **sardor** va **a'zo**.
 
 - **A'zolar** fakultetlar kesimida (filtr: fakultet, kurs, rol, qidiruv), ma'lumotlari bilan:

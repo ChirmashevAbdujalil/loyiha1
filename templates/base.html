@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Ijro nazorati{% endblock %} — Ma'naviyat bo'limi</title>
+  <title>{% block title %}Ijro nazorati{% endblock %} — {% if platform == 'qalqon' %}Qalqon{% else %}Ijro intizomi{% endif %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
@@ -12,68 +12,78 @@
 <body>
 {% with url_name=request.resolver_match.url_name ns=request.resolver_match.namespace %}
 <div class="app">
-  <aside class="sidebar" id="sidebar">
+  <aside class="sidebar{% if platform == 'qalqon' %} sidebar-qalqon{% endif %}" id="sidebar">
     <div class="sidebar-brand">
-      {% if user.is_qalqon_only %}
+      {% if platform == 'qalqon' %}
         <div class="brand-logo brand-qalqon"><i data-lucide="shield"></i></div>
         <div class="brand-name">Qalqon</div>
-        <div class="brand-sub">Jamoatchilik guruhi</div>
+        <div class="brand-sub">Jamoatchilik guruhi platformasi</div>
       {% else %}
         <div class="brand-logo">i</div>
         <div class="brand-name">Ijro intizomi</div>
         <div class="brand-sub">Ma'naviyat va ma'rifat bo'limi</div>
       {% endif %}
     </div>
-    {% if user.is_head %}
-      <a href="{% url 'task_create' %}" class="btn btn-new"><i data-lucide="plus"></i> Yangi topshiriq</a>
-    {% elif user.is_qalqon_staff %}
-      <a href="{% url 'qalqon:duty_create' %}" class="btn btn-new"><i data-lucide="shield-plus"></i> Naryad qo'yish</a>
+    {% if other_platform %}
+      <div class="platform-switch" role="tablist" aria-label="Platforma">
+        <a href="{% url 'dashboard' %}?p=ijro" class="{% if platform == 'ijro' %}on{% endif %}"><i data-lucide="file-check-2"></i> Ijro{% if platform != 'ijro' and other_unread %}<span class="dot-n">{{ other_unread }}</span>{% endif %}</a>
+        <a href="{% url 'qalqon:calendar' %}" class="{% if platform == 'qalqon' %}on{% endif %}"><i data-lucide="shield"></i> Qalqon{% if platform != 'qalqon' and other_unread %}<span class="dot-n">{{ other_unread }}</span>{% endif %}</a>
+      </div>
     {% endif %}
-    <nav class="nav">
-      {% if not user.is_qalqon_only %}
-      <div class="nav-section">Ijro tizimi</div>
-      <a href="{% url 'dashboard' %}" class="{% if not ns and url_name == 'dashboard' %}active{% endif %}"><i data-lucide="calendar-days"></i> Bosh sahifa</a>
-      {% if user.is_head %}
-        <a href="{% url 'task_list' %}" class="{% if not ns and url_name == 'task_list' or not ns and url_name == 'task_detail' or not ns and url_name == 'task_edit' %}active{% endif %}"><i data-lucide="send"></i> Topshiriqlar</a>
-        <a href="{% url 'review_queue' %}" class="{% if url_name == 'review_queue' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Tasdiqlash uchun {% if review_count %}<span class="count">{{ review_count }}</span>{% endif %}</a>
-        <a href="{% url 'report' %}" class="{% if url_name == 'report' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Hisobotlar</a>
-        <div class="nav-section">Ma'lumotnomalar</div>
-        <a href="{% url 'faculty_list' %}" class="{% if url_name|slice:':7' == 'faculty' %}active{% endif %}"><i data-lucide="building-2"></i> Fakultetlar</a>
-        <a href="{% url 'tutor_list' %}" class="{% if url_name|slice:':5' == 'tutor' %}active{% endif %}"><i data-lucide="users"></i> Tyutorlar</a>
-      {% else %}
-        <a href="{% url 'task_list' %}" class="{% if url_name == 'task_list' or url_name == 'assignment_detail' %}active{% endif %}"><i data-lucide="inbox"></i> Mening topshiriqlarim {% if open_count %}<span class="count red">{{ open_count }}</span>{% endif %}</a>
-      {% endif %}
-      {% endif %}
 
-      {% if user.is_qalqon_staff or user.is_qalqon_member %}
-      <div class="nav-section">Qalqon</div>
-      <a href="{% url 'qalqon:calendar' %}" class="{% if ns == 'qalqon' and url_name == 'calendar' %}active{% endif %}"><i data-lucide="shield"></i> Naryadlar kalendari</a>
-      {% if not user.is_qalqon_admin or user.is_qalqon_leader %}
-        <a href="{% url 'qalqon:my_duties' %}" class="{% if ns == 'qalqon' and url_name == 'my_duties' %}active{% endif %}"><i data-lucide="map-pin"></i> Mening naryadlarim {% if qalqon_today %}<span class="count red">{{ qalqon_today }}</span>{% endif %}</a>
-      {% endif %}
-      {% if user.is_qalqon_staff %}
-        <a href="{% url 'qalqon:duty_list' %}" class="{% if ns == 'qalqon' and url_name|slice:':4' == 'duty' %}active{% endif %}"><i data-lucide="list-checks"></i> Naryadlar</a>
-        <a href="{% url 'qalqon:violation_list' %}" class="{% if ns == 'qalqon' and url_name == 'violation_list' %}active{% endif %}"><i data-lucide="siren"></i> Qonunbuzarliklar</a>
-        <a href="{% url 'qalqon:stats' %}" class="{% if ns == 'qalqon' and url_name == 'stats' %}active{% endif %}"><i data-lucide="pie-chart"></i> Statistika</a>
-        <a href="{% url 'qalqon:member_list' %}" class="{% if ns == 'qalqon' and url_name|slice:':6' == 'member' %}active{% endif %}"><i data-lucide="users-round"></i> A'zolar</a>
-        <a href="{% url 'qalqon:building_list' %}" class="{% if ns == 'qalqon' and url_name|slice:':8' == 'building' %}active{% endif %}"><i data-lucide="building"></i> Binolar va TTJ</a>
-        {% if user.is_qalqon_only %}<a href="{% url 'faculty_list' %}" class="{% if url_name|slice:':7' == 'faculty' %}active{% endif %}"><i data-lucide="building-2"></i> Fakultetlar</a>{% endif %}
-      {% endif %}
-      {% endif %}
-
-      <div class="nav-section">Shaxsiy</div>
-      <a href="{% url 'notification_list' %}" class="{% if url_name == 'notification_list' %}active{% endif %}"><i data-lucide="bell"></i> Bildirishnomalar {% if unread_count %}<span class="count red" data-unread-count>{{ unread_count }}</span>{% endif %}</a>
-      <a href="{% url 'profile' %}" class="{% if url_name == 'profile' %}active{% endif %}"><i data-lucide="user-cog"></i> Profil</a>
-    </nav>
+    {% if platform == 'qalqon' %}
+      {% if user.is_qalqon_staff %}<a href="{% url 'qalqon:duty_create' %}" class="btn btn-new btn-new-qalqon"><i data-lucide="shield-plus"></i> Naryad qo'yish</a>{% endif %}
+      <nav class="nav">
+        <div class="nav-section">Naryadlar</div>
+        <a href="{% url 'qalqon:calendar' %}" class="{% if ns == 'qalqon' and url_name == 'calendar' %}active{% endif %}"><i data-lucide="calendar-days"></i> Kalendar</a>
+        {% if user.is_qalqon_member or user.is_qalqon_leader %}
+          <a href="{% url 'qalqon:my_duties' %}" class="{% if ns == 'qalqon' and url_name == 'my_duties' %}active{% endif %}"><i data-lucide="map-pin"></i> Mening naryadlarim {% if qalqon_today %}<span class="count red">{{ qalqon_today }}</span>{% endif %}</a>
+        {% endif %}
+        {% if user.is_qalqon_staff %}
+          <a href="{% url 'qalqon:duty_list' %}" class="{% if ns == 'qalqon' and url_name|slice:':4' == 'duty' %}active{% endif %}"><i data-lucide="list-checks"></i> Barcha naryadlar</a>
+          <a href="{% url 'qalqon:violation_list' %}" class="{% if ns == 'qalqon' and url_name == 'violation_list' %}active{% endif %}"><i data-lucide="siren"></i> Qonunbuzarliklar</a>
+          <div class="nav-section">Tahlil</div>
+          <a href="{% url 'qalqon:stats' %}" class="{% if ns == 'qalqon' and url_name == 'stats' %}active{% endif %}"><i data-lucide="pie-chart"></i> Statistika</a>
+          <div class="nav-section">Ma'lumotnomalar</div>
+          <a href="{% url 'qalqon:member_list' %}" class="{% if ns == 'qalqon' and url_name|slice:':6' == 'member' %}active{% endif %}"><i data-lucide="users-round"></i> A'zolar</a>
+          <a href="{% url 'qalqon:building_list' %}" class="{% if ns == 'qalqon' and url_name|slice:':8' == 'building' %}active{% endif %}"><i data-lucide="building"></i> Binolar va TTJ</a>
+          <a href="{% url 'faculty_list' %}?p=qalqon" class="{% if url_name|slice:':7' == 'faculty' %}active{% endif %}"><i data-lucide="building-2"></i> Fakultetlar</a>
+        {% endif %}
+        <div class="nav-section">Shaxsiy</div>
+        <a href="{% url 'qalqon:gps_check' %}" class="{% if ns == 'qalqon' and url_name == 'gps_check' %}active{% endif %}"><i data-lucide="locate-fixed"></i> GPS tekshiruvi</a>
+        <a href="{% url 'notification_list' %}?p=qalqon" class="{% if url_name == 'notification_list' %}active{% endif %}"><i data-lucide="bell"></i> Bildirishnomalar {% if unread_count %}<span class="count red" data-unread-count>{{ unread_count }}</span>{% endif %}</a>
+        <a href="{% url 'profile' %}?p=qalqon" class="{% if url_name == 'profile' %}active{% endif %}"><i data-lucide="user-cog"></i> Profil</a>
+      </nav>
+    {% else %}
+      {% if user.is_head %}<a href="{% url 'task_create' %}" class="btn btn-new"><i data-lucide="plus"></i> Yangi topshiriq</a>{% endif %}
+      <nav class="nav">
+        <div class="nav-section">Asosiy</div>
+        <a href="{% url 'dashboard' %}" class="{% if not ns and url_name == 'dashboard' %}active{% endif %}"><i data-lucide="calendar-days"></i> Bosh sahifa</a>
+        {% if user.is_head %}
+          <a href="{% url 'task_list' %}" class="{% if url_name == 'task_list' or url_name == 'task_detail' or url_name == 'task_edit' or url_name == 'task_create' %}active{% endif %}"><i data-lucide="send"></i> Topshiriqlar</a>
+          <a href="{% url 'review_queue' %}" class="{% if url_name == 'review_queue' %}active{% endif %}"><i data-lucide="clipboard-check"></i> Tasdiqlash uchun {% if review_count %}<span class="count">{{ review_count }}</span>{% endif %}</a>
+          <div class="nav-section">Ma'lumotnomalar</div>
+          <a href="{% url 'faculty_list' %}?p=ijro" class="{% if url_name|slice:':7' == 'faculty' %}active{% endif %}"><i data-lucide="building-2"></i> Fakultetlar</a>
+          <a href="{% url 'tutor_list' %}" class="{% if url_name|slice:':5' == 'tutor' %}active{% endif %}"><i data-lucide="users"></i> Tyutorlar</a>
+          <div class="nav-section">Statistika</div>
+          <a href="{% url 'report' %}" class="{% if url_name == 'report' %}active{% endif %}"><i data-lucide="bar-chart-3"></i> Hisobotlar</a>
+        {% else %}
+          <a href="{% url 'task_list' %}" class="{% if url_name == 'task_list' or url_name == 'assignment_detail' %}active{% endif %}"><i data-lucide="inbox"></i> Mening topshiriqlarim {% if open_count %}<span class="count red">{{ open_count }}</span>{% endif %}</a>
+        {% endif %}
+        <div class="nav-section">Shaxsiy</div>
+        <a href="{% url 'notification_list' %}?p=ijro" class="{% if url_name == 'notification_list' %}active{% endif %}"><i data-lucide="bell"></i> Bildirishnomalar {% if unread_count %}<span class="count red" data-unread-count>{{ unread_count }}</span>{% endif %}</a>
+        <a href="{% url 'profile' %}?p=ijro" class="{% if url_name == 'profile' %}active{% endif %}"><i data-lucide="user-cog"></i> Profil</a>
+      </nav>
+    {% endif %}
     <div class="sidebar-foot"><i data-lucide="shield-check"></i> {{ user.get_role_display }}</div>
   </aside>
 
   <div class="main">
     <header class="topbar">
       <button class="icon-btn menu-toggle" type="button" data-toggle-nav aria-label="Menyu"><i data-lucide="menu"></i></button>
-      <div class="crumb"><span class="crumb-logo">i</span> {% block crumb %}Topshiriqlar{% endblock %}</div>
+      <div class="crumb">{% if platform == 'qalqon' %}<span class="crumb-logo crumb-qalqon"><i data-lucide="shield"></i></span>{% else %}<span class="crumb-logo">i</span>{% endif %} {% block crumb %}Topshiriqlar{% endblock %}</div>
       <div class="right flex" style="gap:10px">
-        {% if user.is_head %}
+        {% if user.is_head and platform == 'ijro' %}
         <form class="top-search" action="{% url 'task_list' %}" method="get">
           <i data-lucide="search"></i><input type="search" name="q" placeholder="Topshiriq qidirish" id="global-search">
           <span class="kbd">Ctrl K</span>
@@ -86,7 +96,7 @@
           </button>
           <div class="dropdown-menu notif-menu">
             <div class="head"><b>Bildirishnomalar</b>
-              <form method="post" action="{% url 'notification_read_all' %}" class="right">{% csrf_token %}
+              <form method="post" action="{% url 'notification_read_all' %}?p={{ platform }}" class="right">{% csrf_token %}
                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
                 <button class="btn btn-sm btn-ghost" type="submit" style="width:auto">Hammasi o'qildi</button>
               </form>
@@ -101,9 +111,10 @@
           </button>
           <div class="dropdown-menu">
             <div style="padding:8px 10px"><b>{{ user.full_name }}</b><div class="small muted">{{ user.get_role_display }}{% if user.faculty %} · {{ user.faculty.label }}{% endif %}</div></div>
-            <a href="{% url 'profile' %}"><i data-lucide="key-round"></i> Parolni o'zgartirish</a>
+            <a href="{% url 'profile' %}?p={{ platform }}"><i data-lucide="key-round"></i> Parolni o'zgartirish</a>
             {% if user.is_superuser %}<a href="{% url 'admin:index' %}"><i data-lucide="settings"></i> Admin panel</a>{% endif %}
             <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+              <input type="hidden" name="next" value="{% if platform == 'qalqon' %}{% url 'qalqon:login' %}{% else %}{% url 'login' %}{% endif %}">
               <button type="submit"><i data-lucide="log-out"></i> Chiqish</button>
             </form>
           </div>
@@ -130,7 +141,7 @@
 <div class="toasts" id="toasts"></div>
 {% endwith %}
 <script src="{% static 'vendor/lucide.min.js' %}"></script>
-<script>window.NOTIF_FEED_URL = "{% url 'notification_feed' %}";</script>
+<script>window.NOTIF_FEED_URL = "{% url 'notification_feed' %}?p={{ platform }}";</script>
 <script src="{% static 'js/app.js' %}"></script>
 {% block scripts %}{% endblock %}
 </body>

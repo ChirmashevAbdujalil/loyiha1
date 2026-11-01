@@ -5,6 +5,7 @@ from collections import Counter
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.views import LoginView
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Count
@@ -502,3 +503,35 @@ def violation_photo(request, pk):
     if not (request.user.is_qalqon_staff or v.duty_member.member_id == request.user.pk):
         raise PermissionDenied
     return _serve(v.photo)
+
+
+# ---------------------------------------------------------------- kirish va GPS tekshiruvi
+
+class QalqonLoginView(LoginView):
+    """Qalqon platformasining alohida kirish sahifasi."""
+
+    template_name = "qalqon/login.html"
+    redirect_authenticated_user = True
+
+    def get_default_redirect_url(self):
+        user = self.request.user
+        if user.is_qalqon_staff or user.is_qalqon_member:
+            return reverse("qalqon:calendar")
+        return reverse("dashboard")
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        self.request.session["platform"] = "qalqon"
+        return response
+
+
+@qalqon_required
+def gps_check(request):
+    """A'zo telefoni joylashuvni to'g'ri aniqlayotganini sinash sahifasi (hech narsa saqlanmaydi)."""
+    buildings = [
+        {"name": b.name, "lat": float(b.latitude), "lng": float(b.longitude), "radius": b.radius_m}
+        for b in Building.objects.filter(is_active=True)
+    ]
+    return render(request, "qalqon/gps_check.html", {
+        "buildings_json": buildings, "max_accuracy": settings.QALQON_MAX_GPS_ACCURACY,
+    })

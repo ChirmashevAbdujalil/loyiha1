@@ -1,0 +1,54 @@
+{% load static %}<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kirish — Qalqon</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-art qalqon">
+    <div class="flex" style="gap:12px">
+      <div class="brand-logo brand-qalqon" style="margin:0;width:46px;height:46px"><i data-lucide="shield"></i></div>
+      <div><div class="brand-name">Qalqon</div><div class="brand-sub">Jamoatchilik guruhi platformasi</div></div>
+    </div>
+    <div style="position:relative;z-index:1">
+      <h1>Qalqon jamoatchilik guruhi naryadlari</h1>
+      <p class="mt-2">Naryad jadvali, joylashuv orqali naryadni boshlash va yakunlash, qonunbuzarliklarni qayd etish.</p>
+    </div>
+    <div class="login-feats">
+      <div><i data-lucide="calendar-days"></i> Naryadlar kalendari</div>
+      <div><i data-lucide="locate-fixed"></i> GPS orqali joylashuv tekshiruvi</div>
+      <div><i data-lucide="siren"></i> Qonunbuzarliklarni qayd etish</div>
+      <div><i data-lucide="pie-chart"></i> Avtomatik statistika</div>
+    </div>
+  </div>
+  <div class="login-form-wrap">
+    <form class="login-form" method="post">
+      {% csrf_token %}
+      <div class="brand-logo brand-qalqon" style="margin:0 0 16px;width:52px;height:52px"><i data-lucide="shield"></i></div>
+      <h2 style="font-size:24px;font-weight:800">Qalqon platformasiga kirish</h2>
+      <p class="muted mt-1 mb-3">Login va parolingizni kiriting</p>
+      {% if form.errors %}
+        <div class="alert alert-danger mb-3"><i data-lucide="alert-octagon"></i> Login yoki parol noto'g'ri.</div>
+      {% endif %}
+      <div class="field mb-3">
+        <label for="id_username">Login</label>
+        <input type="text" name="username" id="id_username" autofocus autocomplete="username" required value="{{ form.username.value|default:'' }}">
+      </div>
+      <div class="field mb-3">
+        <label for="id_password">Parol</label>
+        <input type="password" name="password" id="id_password" autocomplete="current-password" required>
+      </div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn btn-lg btn-block" type="submit" style="background:#059669;border-color:#059669;color:#fff"><i data-lucide="log-in"></i> Kirish</button>
+      <p class="small muted mt-3" style="text-align:center"><a href="{% url 'login' %}">Ijro intizomi tizimiga o'tish</a></p>
+    </form>
+  </div>
+</div>
+<script src="{% static 'vendor/lucide.min.js' %}"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

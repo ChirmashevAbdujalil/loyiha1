@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}GPS tekshiruvi{% endblock %}
+{% block crumb %}Qalqon · GPS tekshiruvi{% endblock %}
+{% block head %}{% include "qalqon/_leaflet.html" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>GPS tekshiruvi</h1><div class="sub">Telefoningiz joylashuvni to'g'ri aniqlayotganini oldindan sinab ko'ring. Bu sahifada hech narsa saqlanmaydi.</div></div>
+</div>
+<div class="detail-grid">
+  <div>
+    <div class="card">
+      <div class="card-body" style="display:grid;gap:14px">
+        <button class="btn btn-success btn-xl" type="button" id="gps-start"><i data-lucide="locate-fixed"></i> Joylashuvni aniqlash</button>
+        <div class="geo-status" id="gps-status"></div>
+        <div class="form-grid" id="gps-values" style="display:none">
+          <div><div class="small muted">Koordinata</div><div class="coord" id="gps-coord">—</div></div>
+          <div><div class="small muted">Aniqlik</div><div class="gps-big" id="gps-acc">—</div><div class="small" id="gps-acc-note"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><i data-lucide="building"></i><h3>Binolargacha masofa</h3></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Bino</th><th>Masofa</th><th>Radius</th><th>Holat</th></tr></thead>
+          <tbody id="gps-rows"><tr><td colspan="4" class="muted small">Avval joylashuvni aniqlang.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="card"><div class="card-body" style="display:grid;gap:10px">
+      <div id="gps-map" class="map" data-map></div>
+      <div class="small muted" style="display:grid;gap:6px">
+        <div><b>Ishlashi uchun:</b></div>
+        <div>• sayt <b>https://</b> orqali ochilgan bo'lishi kerak;</div>
+        <div>• telefonda GPS (Joylashuv) yoqilgan, brauzerga ruxsat berilgan bo'lishi kerak;</div>
+        <div>• aniqlik ±{{ max_accuracy }} m dan yaxshi bo'lishi kerak — binoda bo'lsangiz, deraza yoki eshik oldiga chiqing.</div>
+      </div>
+    </div></div>
+  </div>
+</div>
+{{ buildings_json|json_script:"gps-buildings" }}
+{% endblock %}
+{% block scripts %}
+{% include "qalqon/_scripts.html" %}
+<script>
+(function () {
+  var buildings = JSON.parse(document.getElementById("gps-buildings").textContent);
+  var maxAcc = {{ max_accuracy }};
+  var btn = document.getElementById("gps-start"), status = document.getElementById("gps-status");
+  var rows = document.getElementById("gps-rows"), watchId = null, me = null, meAcc = null;
+  var m = window.Qalqon.maps["gps-map"];
+  if (m) buildings.forEach(function (b) {
+    L.circle([b.lat, b.lng], { radius: b.radius, color: "#059669", weight: 2, fillOpacity: .1 }).addTo(m.map).bindTooltip(b.name);
+  });
+  function say(t, cls) { status.className = "geo-status show " + (cls || ""); status.innerHTML = t; }
+  function esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+  function update(pos) {
+    var la = pos.coords.latitude, ln = pos.coords.longitude, acc = Math.round(pos.coords.accuracy);
+    document.getElementById("gps-values").style.display = "";
+    document.getElementById("gps-coord").textContent = la.toFixed(6) + ", " + ln.toFixed(6);
+    document.getElementById("gps-acc").textContent = "±" + acc + " m";
+    var note = document.getElementById("gps-acc-note");
+    note.textContent = acc <= maxAcc ? "Yetarli — naryadni boshlash mumkin" : "Past — ochiq joyga chiqing";
+    note.style.color = acc <= maxAcc ? "var(--green-text)" : "var(--red-text)";
+    var list = buildings.map(function (b) { return { b: b, d: window.Qalqon.haversine(la, ln, b.lat, b.lng) }; })
+      .sort(function (x, y) { return x.d - y.d; });
+    rows.innerHTML = list.length ? list.map(function (x) {
+      var inside = x.d <= x.b.radius && acc <= maxAcc;
+      return "<tr><td><b>" + esc(x.b.name) + "</b></td><td>" + (x.d < 1000 ? Math.round(x.d) + " m" : (x.d / 1000).toFixed(2) + " km") +
+        "</td><td>" + x.b.radius + " m</td><td>" + (inside ? '<span class="badge st-approved">Hudud ichida</span>' :
+        '<span class="badge st-overdue">Hududdan tashqarida</span>') + "</td></tr>";
+    }).join("") : '<tr><td colspan="4" class="muted small">Binolar kiritilmagan.</td></tr>';
+    if (m) {
+      if (me) { me.setLatLng([la, ln]); meAcc.setLatLng([la, ln]).setRadius(acc); }
+      else {
+        meAcc = L.circle([la, ln], { radius: acc, color: "#3567e8", weight: 1, fillOpacity: .08 }).addTo(m.map);
+        me = L.circleMarker([la, ln], { radius: 8, color: "#fff", weight: 3, fillColor: "#3567e8", fillOpacity: 1 }).addTo(m.map).bindTooltip("Siz");
+        m.map.setView([la, ln], 17);
+      }
+    }
+    say("<span class=\"pulse\"></span> Joylashuv jonli kuzatilmoqda (har bir o'zgarishda yangilanadi).", "ok");
+  }
+  btn.addEventListener("click", function () {
+    if (!("geolocation" in navigator)) { say("Bu qurilma joylashuvni aniqlay olmaydi.", "err"); return; }
+    if (!window.isSecureContext) { say("Sayt HTTPS orqali ochilmagan — brauzer joylashuvni bermaydi. Manzil https:// bilan boshlanishi kerak.", "err"); return; }
+    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    say('<span class="pulse"></span> Aniqlanmoqda…');
+    watchId = navigator.geolocation.watchPosition(update, function (err) {
+      var msg = { 1: "Joylashuvga ruxsat berilmadi. Brauzer sozlamalarida ushbu saytga ruxsat bering.",
+                  2: "Joylashuvni aniqlab bo'lmadi. GPS yoqilganini tekshiring.", 3: "Vaqt tugadi, qayta urining." }[err.code];
+      say(msg || "Xatolik.", "err");
+    }, { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 });
+  });
+})();
+</script>
+{% endblock %}

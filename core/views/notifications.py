@@ -7,13 +7,14 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from .. import platform as pf
 from ..models import Notification
 from ..utils import uz_datetime
 
 
 @login_required
 def notification_list(request):
-    notifications = request.user.notifications.all()[:200]
+    notifications = pf.notifications_for(request.user, pf.current(request))[:200]
     return render(request, "notifications/list.html", {"notifications": notifications})
 
 
@@ -29,15 +30,16 @@ def notification_open(request, pk):
 @login_required
 @require_POST
 def notification_read_all(request):
-    request.user.notifications.filter(is_read=False).update(is_read=True)
+    pf.notifications_for(request.user, pf.current(request)).filter(is_read=False).update(is_read=True)
     messages.success(request, "Barcha bildirishnomalar o'qilgan deb belgilandi.")
-    return redirect(request.POST.get("next") or "notification_list")
+    nxt = request.POST.get("next") or ""
+    return redirect(nxt if nxt.startswith("/") and not nxt.startswith("//") else "notification_list")
 
 
 @login_required
 def notification_feed(request):
     """Sarlavhadagi qo'ng'iroqcha uchun (har 30 soniyada so'raladi)."""
-    unread = request.user.notifications.filter(is_read=False)
+    unread = pf.notifications_for(request.user, pf.current(request)).filter(is_read=False)
     latest = [
         {
             "id": n.pk,

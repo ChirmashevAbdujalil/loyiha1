@@ -7,6 +7,8 @@ app_name = "qalqon"
 
 urlpatterns = [
     path("", views.calendar, name="calendar"),
+    path("kirish/", views.QalqonLoginView.as_view(), name="login"),
+    path("gps-tekshiruv/", views.gps_check, name="gps_check"),
     path("mening-naryadlarim/", views.my_duties, name="my_duties"),
 
     path("naryadlar/", views.duty_list, name="duty_list"),
