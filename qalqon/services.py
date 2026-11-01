@@ -194,6 +194,34 @@ def build_stats(date_from, date_to, building_id=None, faculty_id=None):
         key=lambda r: -r["count"],
     )
 
+    # Qonunbuzarlik qilgan talabalar — har biri bitta qatorda, barcha ma'lumotlari va qonunbuzarliklari bilan
+    violators = []
+    for vs in offenders.values():
+        vs = sorted(vs, key=lambda x: x.occurred_at, reverse=True)
+        latest = vs[0]
+
+        def first_value(attr, items=vs):
+            return next((getattr(x, attr) for x in items if getattr(x, attr)), "")
+
+        violators.append({
+            "name": latest.student_name,
+            "faculty": latest.faculty,
+            "direction": first_value("direction"),
+            "group": latest.group_name,
+            "course": latest.course,
+            "dormitory": first_value("dormitory") or None,
+            "room": first_value("room"),
+            "tutor": next((x.tutor_display for x in vs if x.tutor_display), ""),
+            "count": len(vs),
+            "categories": [(category_labels[k], c) for k, c in Counter(x.category for x in vs).most_common()],
+            "first": vs[-1].occurred_at,
+            "last": latest.occurred_at,
+            "recorders": sorted({x.duty_member.member.full_name for x in vs}),
+            "places": sorted({x.place.name for x in vs}),
+            "violations": vs,
+        })
+    violators.sort(key=lambda r: (-r["count"], -r["last"].timestamp()))
+
     # A'zolar faolligi
     member_rows = {}
     for dm in duty_members_for_members:
@@ -249,6 +277,7 @@ def build_stats(date_from, date_to, building_id=None, faculty_id=None):
         "dorm_rows": dorm_rows,
         "recorder_rows": recorder_rows,
         "repeat_offenders": repeat_offenders,
+        "violators": violators,
         "member_rows": member_rows,
         "trend": trend,
         "hours": hours,

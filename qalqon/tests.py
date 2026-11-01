@@ -427,3 +427,29 @@ class MemberPhotoUploadTests(TestCase):
             "photo": SimpleUploadedFile("r.png", buf.getvalue(), content_type="image/png"),
         })
         self.assertTrue(User.objects.get(username="yangi").qalqon_profile.photo)
+
+
+class ViolatorListTests(TestCase):
+    def test_stats_lists_violating_students(self):
+        from openpyxl import load_workbook
+
+        from django.core.management import call_command
+
+        call_command("seed_qalqon", stdout=io.StringIO())
+        leader = User.objects.get(username="sardor")
+        self.client.force_login(leader)
+        v = Violation.objects.order_by("-occurred_at").first()
+        params = {"from": "2020-01-01", "to": "2030-12-31"}
+        r = self.client.get(reverse("qalqon:stats"), params)
+        self.assertContains(r, "Qonunbuzarlik qilgan talabalar")
+        from django.utils.html import escape
+
+        self.assertContains(r, escape(v.student_name))
+        self.assertContains(r, v.group_name)
+        self.assertContains(r, escape(v.description))
+        total = sum(row["count"] for row in r.context["violators"])
+        self.assertEqual(total, Violation.objects.count())
+        x = self.client.get(reverse("qalqon:stats_export"), params)
+        wb = load_workbook(BytesIO(x.content))
+        self.assertIn("Qonunbuzar talabalar", wb.sheetnames)
+        self.assertEqual(wb["Qonunbuzar talabalar"].max_row - 4, len(r.context["violators"]))

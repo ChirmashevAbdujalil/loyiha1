@@ -703,3 +703,8 @@ a.duty-card:hover { border-color: var(--primary-100); box-shadow: var(--shadow);
 .kv dd { margin: 0; font-weight: 600; word-break: break-word; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .02em; }
 @media (max-width: 900px) { .kv { grid-template-columns: 1fr; gap: 2px; } .kv dd { margin-bottom: 8px; } }
+.table.violators tbody.vl-item + tbody.vl-item tr.vl-row td { border-top: 1px solid var(--border); }
+.table.violators tr.vl-row td { border-bottom: 0; }
+.vl-toggle svg { transition: transform .15s; }
+.vl-toggle.on svg { transform: rotate(180deg); }
+@media print { .vl-detail.hidden { display: table-row !important; } }

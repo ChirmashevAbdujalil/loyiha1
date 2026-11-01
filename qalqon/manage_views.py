@@ -337,6 +337,7 @@ def stats(request):
     faculty_id = _int(request.GET.get("faculty"))
     data = services.build_stats(date_from, date_to, building_id, faculty_id)
     data.pop("violations")
+    data["violator_faculties"] = sorted({r["faculty"] for r in data["violators"]}, key=lambda f: f.name)
     return render(request, "qalqon/stats.html", {
         **data,
         "date_from": date_from, "date_to": date_to,
@@ -421,6 +422,23 @@ def stats_export(request):
         ws.append([r["name"], r["faculty"].name, r["group"], r["course"], r["count"], r["categories"]])
     _widths(ws, [32, 28, 10, 6, 8, 50])
 
+    ws = wb.create_sheet("Qonunbuzar talabalar")
+    _title(ws, "Qonunbuzarlik qilgan talabalar", period, 14)
+    _header(ws, ["№", "Talaba F.I.Sh", "Fakultet", "Yo'nalish", "Guruh", "Kurs", "TTJ", "Xona", "Tyutori",
+                 "Soni", "Qonunbuzarlik turlari", "Birinchi", "Oxirgi", "Qayd etgan a'zolar"], 4)
+    for i, r in enumerate(data["violators"], 1):
+        ws.append([
+            i, r["name"], r["faculty"].name, r["direction"], r["group"], r["course"],
+            r["dormitory"].name if r["dormitory"] else "", r["room"], r["tutor"], r["count"],
+            "; ".join(f"{label} ({c})" for label, c in r["categories"]),
+            timezone.localtime(r["first"]).strftime("%d.%m.%Y %H:%M"),
+            timezone.localtime(r["last"]).strftime("%d.%m.%Y %H:%M"),
+            ", ".join(r["recorders"]),
+        ])
+        if r["count"] > 1:
+            ws.cell(row=ws.max_row, column=10).fill = red
+    _widths(ws, [5, 32, 30, 24, 10, 6, 22, 8, 26, 7, 44, 16, 16, 34])
+
     ws = wb.create_sheet("Qonunbuzarliklar")
     _header(ws, ["Sana", "Turi", "Talaba", "Fakultet", "Guruh", "Kurs", "TTJ", "Xona", "Tyutor", "Izoh",
                  "Qayd etgan"], 1)
@@ -454,7 +472,7 @@ def _header(ws, headers, row):
         c.font = Font(bold=True, color="FFFFFF")
         c.fill = PatternFill("solid", fgColor="1E1B4B")
         c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    ws.freeze_panes = ws.cell(row=row + 1, column=1)
+    ws.freeze_panes = f"A{row + 1}"  # ws.cell() bo'sh qator yaratib yuborardi
 
 
 def _widths(ws, widths):

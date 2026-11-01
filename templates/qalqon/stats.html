@@ -1,6 +1,39 @@
 {% extends "base.html" %}
 {% load core_tags qalqon_tags %}
 {% block title %}Qalqon statistikasi{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var items = Array.prototype.slice.call(document.querySelectorAll(".vl-item"));
+  if (!items.length) return;
+  var q = document.getElementById("vl-search"), fac = document.getElementById("vl-faculty"),
+      rep = document.getElementById("vl-repeat"), none = document.getElementById("vl-none"),
+      expand = document.getElementById("vl-expand"), open = false;
+  function apply() {
+    var text = q.value.trim().toLowerCase(), n = 0;
+    items.forEach(function (it) {
+      var show = (!text || it.dataset.text.indexOf(text) !== -1) && (!fac.value || it.dataset.faculty === fac.value) &&
+                 (!rep.checked || parseInt(it.dataset.count, 10) > 1);
+      it.style.display = show ? "" : "none";
+      if (show) it.querySelector(".vl-n").textContent = ++n;
+    });
+    none.classList.toggle("hidden", n > 0);
+  }
+  [q, fac, rep].forEach(function (el) { el.addEventListener(el === q ? "input" : "change", apply); });
+  items.forEach(function (it) {
+    it.querySelector(".vl-toggle").addEventListener("click", function () {
+      it.querySelector(".vl-detail").classList.toggle("hidden");
+      this.classList.toggle("on");
+    });
+  });
+  expand.addEventListener("click", function () {
+    open = !open;
+    items.forEach(function (it) { it.querySelector(".vl-detail").classList.toggle("hidden", !open); });
+  });
+})();
+</script>
+{% endblock %}
 {% block crumb %}Qalqon · Statistika{% endblock %}
 {% block content %}
 <div class="page-head no-print">
@@ -139,6 +172,67 @@
       {% empty %}<tr><td colspan="9"><div class="empty" style="padding:16px">Ma'lumot yo'q</div></td></tr>{% endfor %}
       </tbody>
     </table>
+  </div>
+</div>
+
+<div class="card mt-3" id="violators">
+  <div class="card-head flex-wrap" style="gap:10px">
+    <i data-lucide="user-round-x" style="color:var(--red)"></i><h3>Qonunbuzarlik qilgan talabalar</h3>
+    <span class="badge st-overdue">{{ violators|length }} nafar</span>
+    <div class="right flex flex-wrap no-print" style="gap:8px">
+      <div class="search" style="height:34px;min-width:230px"><i data-lucide="search"></i><input type="search" id="vl-search" placeholder="F.I.Sh, guruh, TTJ, tyutor…"></div>
+      <select class="select-sm" id="vl-faculty"><option value="">Barcha fakultetlar</option>{% for f in violator_faculties %}<option value="{{ f.pk }}">{{ f.label }}</option>{% endfor %}</select>
+      <label class="check small"><input type="checkbox" id="vl-repeat"> Faqat takroriy</label>
+      <button class="btn btn-sm" type="button" id="vl-expand"><i data-lucide="chevrons-down-up"></i> Barchasini ochish</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="table violators">
+      <thead><tr><th style="width:36px">№</th><th>Talaba</th><th>Fakultet, yo'nalish</th><th>Guruh, kurs</th><th>TTJ, xona</th><th>Tyutori</th><th>Soni</th><th>Qonunbuzarlik turlari</th><th>Oxirgi</th><th style="width:1%"></th></tr></thead>
+      {% for r in violators %}
+      <tbody class="vl-item" data-faculty="{{ r.faculty.pk }}" data-count="{{ r.count }}"
+             data-text="{{ r.name|lower }} {{ r.group|lower }} {{ r.direction|lower }} {{ r.dormitory.name|default:''|lower }} {{ r.room }} {{ r.tutor|lower }} {{ r.faculty.name|lower }}">
+        <tr class="vl-row">
+          <td class="muted vl-n">{{ forloop.counter }}</td>
+          <td><b>{{ r.name }}</b>{% if r.count > 1 %} <span class="badge st-overdue" style="height:18px;font-size:10px">takroriy</span>{% endif %}</td>
+          <td class="small">{{ r.faculty.name }}{% if r.direction %}<div class="muted">{{ r.direction }}</div>{% endif %}</td>
+          <td class="small nowrap">{{ r.group|default:'—' }}<div class="muted">{{ r.course }}-kurs</div></td>
+          <td class="small">{% if r.dormitory %}{{ r.dormitory.label }}{% else %}—{% endif %}{% if r.room %}<div class="muted">{{ r.room }}-xona</div>{% endif %}</td>
+          <td class="small">{{ r.tutor|default:'—' }}</td>
+          <td><span class="badge {% if r.count > 1 %}st-overdue{% else %}plain{% endif %}">{{ r.count }}</span></td>
+          <td><div class="mini-stats">{% for label, c in r.categories %}<span class="badge plain" style="height:20px;font-size:11px">{{ label }}{% if c > 1 %} ×{{ c }}{% endif %}</span>{% endfor %}</div></td>
+          <td class="small nowrap">{{ r.last|date:'d.m.Y' }}<div class="muted">{{ r.last|time:'H:i' }}</div></td>
+          <td><button class="btn btn-sm btn-icon vl-toggle" type="button" title="Tafsilotlar"><i data-lucide="chevron-down"></i></button></td>
+        </tr>
+        <tr class="vl-detail hidden">
+          <td></td>
+          <td colspan="9" style="background:var(--surface-2)">
+            <div class="small muted mb-2">Birinchi: {{ r.first|uz_datetime }} · Oxirgi: {{ r.last|uz_datetime }} · Joylar: {{ r.places|join:", " }} · Qayd etganlar: {{ r.recorders|join:", " }}</div>
+            <div style="display:grid;gap:8px">
+            {% for v in r.violations %}
+              <div class="v-card" style="padding:10px 12px">
+                <div class="top">
+                  <span class="badge st-overdue"><i data-lucide="siren"></i> {{ v.get_category_display }}</span>
+                  <span class="small muted">{{ v.occurred_at|uz_datetime }}</span>
+                  <span class="small">· {{ v.place.name }}{% if v.room %}, {{ v.room }}-xona{% endif %}</span>
+                  <span class="small muted">· qayd etdi: {{ v.duty_member.member.full_name }}</span>
+                  <span class="right flex">
+                    {% if v.photo %}<a class="btn btn-sm" href="{% url 'qalqon:violation_photo' v.pk %}" target="_blank" title="Rasm"><i data-lucide="image"></i></a>{% endif %}
+                    <a class="btn btn-sm" href="{% url 'qalqon:duty_detail' v.duty_member.duty_id %}">Naryad</a>
+                  </span>
+                </div>
+                <div class="desc-text small mt-1">{{ v.description }}</div>
+              </div>
+            {% endfor %}
+            </div>
+          </td>
+        </tr>
+      </tbody>
+      {% empty %}
+      <tbody><tr><td colspan="10"><div class="empty" style="padding:16px"><i data-lucide="shield-check"></i><div class="t">Bu davrda qonunbuzarlik qayd etilmagan</div></div></td></tr></tbody>
+      {% endfor %}
+    </table>
+    <div class="empty hidden" id="vl-none" style="padding:16px">Filtr bo'yicha talaba topilmadi</div>
   </div>
 </div>
 
