@@ -81,6 +81,43 @@
     ), { padding: [40, 40], maxZoom: 18 });
   }
 
+  var ACCURACY_TIPS = "<ul style=\"margin:6px 0 0 18px;padding:0\">" +
+    "<li>Binodan tashqariga yoki deraza oldiga chiqing, 10–20 soniya kuting.</li>" +
+    "<li>Telefonda <b>Joylashuv</b> yoqilgan va <b>aniq joylashuv</b> rejimida bo'lsin (Android: «Google aniq joylashuv»; " +
+    "iPhone: Sozlamalar → Maxfiylik → Joylashuv → Safari/Chrome → «Aniq joylashuv»).</li>" +
+    "<li>Noutbuk emas, telefon ishlating — noutbuk joyni Wi-Fi orqali taxminan aniqlaydi.</li></ul>";
+
+  // GPS bir necha soniyada aniqlashadi: 20 soniyagacha kuzatib, eng aniq natijani olamiz.
+  // Aniqlik `good` metrga yetsa — darhol to'xtaydi.
+  function bestPosition(maxAcc, onProgress, onDone, onError) {
+    var best = null, started = Date.now(), finished = false, watchId = null, timer = null;
+    var good = Math.min(30, maxAcc);
+    function finish() {
+      if (finished) return;
+      finished = true;
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      clearInterval(timer);
+      onDone(best);
+    }
+    watchId = navigator.geolocation.watchPosition(function (pos) {
+      if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
+      if (best.coords.accuracy <= good) finish();
+    }, function (err) {
+      if (err.code === 1 || (!best && Date.now() - started > 20000)) {
+        finished = true;
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        clearInterval(timer);
+        if (best && err.code !== 1) { onDone(best); } else { onError(err); }
+      }
+    }, { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 });
+    timer = setInterval(function () {
+      var secs = Math.round((Date.now() - started) / 1000);
+      if (best && onProgress) onProgress(best.coords.accuracy, secs);
+      if (secs >= 20 && best) finish();
+      if (secs >= 30 && !best) { finished = true; navigator.geolocation.clearWatch(watchId); clearInterval(timer); onError({ code: 3 }); }
+    }, 1000);
+  }
+
   // ---- Joylashuvni aniqlab forma yuborish: <form data-geo data-lat data-lng data-radius data-map="id">
   document.querySelectorAll("form[data-geo]").forEach(function (form) {
     var status = form.querySelector(".geo-status");
@@ -106,7 +143,10 @@
       var original = btn.innerHTML;
       btn.innerHTML = '<span class="pulse"></span> Joylashuv aniqlanmoqda…';
       say('<span class="pulse"></span> GPS orqali joylashuvingiz aniqlanmoqda, kuting…');
-      navigator.geolocation.getCurrentPosition(function (pos) {
+      bestPosition(maxAcc, function (acc, secs) {
+        say('<span class="pulse"></span> GPS aniqligi: <b>±' + Math.round(acc) + " m</b> — aniqlashtirilmoqda (" + secs +
+          " s)… Telefonni ochiq osmon tomon tuting.");
+      }, function (pos) {
         var la = pos.coords.latitude, ln = pos.coords.longitude, acc = pos.coords.accuracy;
         form.querySelector("[name=latitude]").value = la.toFixed(6);
         form.querySelector("[name=longitude]").value = ln.toFixed(6);
@@ -114,7 +154,7 @@
         if (form.dataset.map) showUser(form.dataset.map, la, ln, acc);
         var dist = haversine(la, ln, targetLat, targetLng);
         if (acc > maxAcc) {
-          say("GPS aniqligi past: ±" + Math.round(acc) + " m (kerak: ±" + maxAcc + " m). Ochiq joyga chiqib qayta urining.", "err");
+          say("GPS aniqligi past: ±" + Math.round(acc) + " m (kerak: ±" + maxAcc + " m yoki yaxshiroq)." + ACCURACY_TIPS, "err");
           btn.disabled = false; btn.innerHTML = original; return;
         }
         if (dist > radius) {
@@ -122,13 +162,13 @@
             radius + " m</b>. Binoga yaqinlashib qayta urining.", "err");
           btn.disabled = false; btn.innerHTML = original; return;
         }
-        say("Joylashuv mos keldi (" + Math.round(dist) + " m). Yuborilmoqda…", "ok");
+        say("Joylashuv mos keldi (" + Math.round(dist) + " m, ±" + Math.round(acc) + " m). Yuborilmoqda…", "ok");
         ready = true;
         form.submit();
       }, function (err) {
         say(GEO_ERRORS[err.code] || "Joylashuvni aniqlashda xatolik.", "err");
         btn.disabled = false; btn.innerHTML = original;
-      }, { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 });
+      });
     });
   });
 
@@ -140,7 +180,7 @@
       var original = btn.innerHTML;
       btn.disabled = true;
       btn.innerHTML = "Aniqlanmoqda…";
-      navigator.geolocation.getCurrentPosition(function (pos) {
+      bestPosition(30, function (acc, secs) { btn.innerHTML = "±" + Math.round(acc) + " m (" + secs + " s)…"; }, function (pos) {
         latIn.value = pos.coords.latitude.toFixed(6);
         lngIn.value = pos.coords.longitude.toFixed(6);
         var m = maps[btn.dataset.map];
@@ -150,7 +190,7 @@
       }, function (err) {
         alert(GEO_ERRORS[err.code] || "Joylashuvni aniqlab bo'lmadi.");
         btn.disabled = false; btn.innerHTML = original;
-      }, { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 });
+      });
     });
   });
 
