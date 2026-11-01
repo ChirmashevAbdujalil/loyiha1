@@ -14,7 +14,7 @@ from core.models import Faculty, User
 from core.utils import month_bounds, parse_date, uz_date, uz_datetime
 
 from . import docx_import, services
-from .decorators import qalqon_required, staff_required
+from .decorators import admin_required, qalqon_required, staff_required
 from .forms import BuildingForm, ImportForm, MemberForm
 from .models import Building, DutyMember, MemberProfile, Violation
 
@@ -509,3 +509,19 @@ def member_photo(request, pk):
     response = FileResponse(handle, content_type=mimetypes.guess_type(profile.photo.name)[0] or "image/jpeg")
     response["Cache-Control"] = "private, max-age=3600"
     return response
+
+
+@admin_required
+def settings_view(request):
+    from .forms import QalqonSettingsForm
+    from .models import LocationLog, QalqonSettings
+
+    obj = QalqonSettings.load()
+    form = QalqonSettingsForm(request.POST or None, instance=obj)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Sozlamalar saqlandi va darhol kuchga kirdi.")
+        return redirect("qalqon:settings")
+    # Oxirgi rad etilgan joylashuv tekshiruvlari — chegarani to'g'ri tanlash uchun
+    recent = LocationLog.objects.select_related("duty_member__member").order_by("-created_at")[:30]
+    return render(request, "qalqon/settings.html", {"form": form, "recent": recent})

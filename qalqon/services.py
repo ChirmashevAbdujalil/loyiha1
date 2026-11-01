@@ -4,14 +4,13 @@ import re
 import secrets
 from collections import Counter, defaultdict
 
-from django.conf import settings
 from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
 from core.models import Faculty, Notification, User
 
-from .models import Building, Duty, DutyMember, LocationLog, MemberProfile, Violation
+from .models import Building, Duty, DutyMember, LocationLog, MemberProfile, Violation, qalqon_conf
 
 
 # ------------------------------------------------------------ joylashuv
@@ -23,11 +22,11 @@ def check_location(dm, action, lat, lng, accuracy, user_agent=""):
     """
     duty = dm.duty
     distance = duty.distance_to(lat, lng)
-    max_acc = getattr(settings, "QALQON_MAX_GPS_ACCURACY", 150)
+    max_acc = qalqon_conf()["max_gps_accuracy"]
     if accuracy is not None and accuracy > max_acc:
         ok = False
-        message = (f"GPS aniqligi past (±{accuracy:.0f} m). Ochiq joyga chiqib, "
-                   f"bir necha soniyadan keyin qayta urining (talab: ±{max_acc} m).")
+        message = (f"GPS aniqligi past: ±{accuracy:.0f} m (talab: ±{max_acc} m). Ochiq joyga chiqing, telefonda "
+                   f"«aniq joylashuv»ni yoqing va 10–20 soniyadan keyin qayta urining.")
     elif distance > duty.radius_m:
         ok = False
         message = (f"Siz naryad hududidan tashqaridasiz: binogacha {distance:.0f} m, "

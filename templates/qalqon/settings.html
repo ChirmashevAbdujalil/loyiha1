@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load core_tags qalqon_tags %}
+{% block title %}Qalqon sozlamalari{% endblock %}
+{% block crumb %}Qalqon · Sozlamalar{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Qalqon sozlamalari</h1><div class="sub">O'zgarishlar barcha naryadlar uchun darhol kuchga kiradi.</div></div></div>
+<div class="detail-grid">
+  <form method="post" class="card">{% csrf_token %}
+    <div class="card-head"><i data-lucide="locate-fixed"></i><h3>Joylashuv va vaqt</h3></div>
+    <div class="card-body" style="display:grid;gap:16px">
+      {% include "includes/field.html" with field=form.max_gps_accuracy %}
+      {% include "includes/field.html" with field=form.start_early_minutes %}
+      {% include "includes/field.html" with field=form.finish_grace_hours %}
+      <div class="form-actions"><button class="btn btn-primary" type="submit"><i data-lucide="save"></i> Saqlash</button></div>
+    </div>
+  </form>
+  <div class="card">
+    <div class="card-head"><i data-lucide="info"></i><h3>Qanday tanlash kerak</h3></div>
+    <div class="card-body small" style="display:grid;gap:8px">
+      <div><b>GPS aniqligi</b> — telefon «men shu nuqtadan ±X metr ichidaman» deydi. Ochiq joyda telefon GPS'i odatda
+        ±5–30 m beradi; bino ichida, noutbukda yoki iPhone'da «Aniq joylashuv» o'chiq bo'lsa — ±100–3000 m.</div>
+      <div>Tavsiya: <b>150–250 m</b>. Juda katta qiymat (masalan, 1000) qo'yilsa, a'zo binodan uzoqda turib ham naryadni
+        tasdiqlab olishi mumkin bo'ladi. Shu bilan birga bino radiusi ham tekshiriladi.</div>
+      <div class="muted">Pastdagi jadvalda oxirgi tekshiruvlarning aniqligi ko'rinadi — chegarani shunga qarab tanlang.</div>
+    </div>
+  </div>
+</div>
+<div class="card mt-3">
+  <div class="card-head"><i data-lucide="history"></i><h3>Oxirgi joylashuv tekshiruvlari</h3></div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Vaqt</th><th>A'zo</th><th>Amal</th><th>Binogacha</th><th>Aniqlik</th><th>Natija</th></tr></thead>
+      <tbody>
+      {% for l in recent %}
+        <tr>
+          <td class="small nowrap">{{ l.created_at|uz_datetime }}</td>
+          <td class="small">{{ l.duty_member.member.full_name }}</td>
+          <td class="small">{{ l.get_action_display }}</td>
+          <td class="small">{{ l.distance|meters }}</td>
+          <td class="small">{% if l.accuracy %}±{{ l.accuracy|floatformat:0 }} m{% else %}—{% endif %}</td>
+          <td class="small">{% if l.success %}<span class="badge st-approved">Mos</span>{% else %}<span class="badge st-overdue">Rad</span> <span class="muted">{{ l.message|truncatechars:70 }}</span>{% endif %}</td>
+        </tr>
+      {% empty %}<tr><td colspan="6"><div class="empty" style="padding:16px">Hali tekshiruv bo'lmagan</div></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

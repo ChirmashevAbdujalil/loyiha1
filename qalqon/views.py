@@ -3,7 +3,6 @@ import datetime as dt
 import mimetypes
 from collections import Counter
 
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.views import LoginView
 from django.core.exceptions import PermissionDenied
@@ -21,7 +20,7 @@ from core.utils import WEEKDAYS, WEEKDAYS_SHORT, month_grid, month_title, parse_
 from . import services
 from .decorators import qalqon_required, staff_required
 from .forms import DutyForm, FinishForm, LocationForm, ViolationForm
-from .models import Building, Duty, DutyMember, LocationLog, Violation
+from .models import Building, Duty, DutyMember, LocationLog, Violation, qalqon_conf
 
 # Kalendar katagidagi naryad rangi — eng "muhim" holat bo'yicha
 DUTY_PRIORITY = {"missed": 0, "unfinished": 1, "active": 2, "today": 3, "scheduled": 4, "finished": 5}
@@ -320,7 +319,7 @@ def duty_detail(request, pk):
         "violations": violations,
         "logs": logs,
         "status": _duty_status(dms),
-        "max_accuracy": settings.QALQON_MAX_GPS_ACCURACY,
+        "max_accuracy": qalqon_conf()["max_gps_accuracy"],
     })
 
 
@@ -408,7 +407,7 @@ def duty_finish(request, pk):
             form.add_error(None, "Naryad yakunlanmadi. " + msg)
     return render(request, "qalqon/duty_finish.html", {
         "dm": dm, "duty": dm.duty, "form": form, "violations": violations,
-        "max_accuracy": settings.QALQON_MAX_GPS_ACCURACY,
+        "max_accuracy": qalqon_conf()["max_gps_accuracy"],
     })
 
 
@@ -533,5 +532,5 @@ def gps_check(request):
         for b in Building.objects.filter(is_active=True)
     ]
     return render(request, "qalqon/gps_check.html", {
-        "buildings_json": buildings, "max_accuracy": settings.QALQON_MAX_GPS_ACCURACY,
+        "buildings_json": buildings, "max_accuracy": qalqon_conf()["max_gps_accuracy"],
     })

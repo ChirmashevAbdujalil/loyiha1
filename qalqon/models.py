@@ -156,11 +156,11 @@ class Duty(models.Model):
 
     @property
     def start_window_opens(self):
-        return self.start_dt - dt.timedelta(minutes=getattr(settings, "QALQON_START_EARLY_MINUTES", 60))
+        return self.start_dt - dt.timedelta(minutes=qalqon_conf()["start_early_minutes"])
 
     @property
     def finish_window_closes(self):
-        return self.end_dt + dt.timedelta(hours=getattr(settings, "QALQON_FINISH_GRACE_HOURS", 6))
+        return self.end_dt + dt.timedelta(hours=qalqon_conf()["finish_grace_hours"])
 
     @property
     def phase(self):
@@ -377,3 +377,66 @@ class DataImport(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.loaded_at:%Y-%m-%d %H:%M})"
+
+
+class QalqonSettings(models.Model):
+    """Qalqon sozlamalari (bitta yozuv) — admin saytdan o'zgartiradi."""
+
+    max_gps_accuracy = models.PositiveIntegerField(
+        "Qabul qilinadigan GPS aniqligi (metr)", validators=[MinValueValidator(10), MaxValueValidator(2000)],
+        help_text="Telefon joylashuvni shundan yomonroq aniqlik bilan bersa, naryadni boshlash/yakunlash rad etiladi. "
+                  "Kattalashtirilsa, uzoqroqdan turib ham tasdiqlash osonlashadi.",
+    )
+    start_early_minutes = models.PositiveIntegerField(
+        "Naryadni boshlash tugmasi necha daqiqa oldin ochiladi", validators=[MaxValueValidator(720)],
+    )
+    finish_grace_hours = models.PositiveIntegerField(
+        "Tugash vaqtidan keyin necha soat ichida yakunlash mumkin", validators=[MinValueValidator(1), MaxValueValidator(72)],
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Qalqon sozlamalari"
+        verbose_name_plural = "Qalqon sozlamalari"
+
+    def __str__(self):
+        return "Qalqon sozlamalari"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+        _conf_cache.clear()
+
+    @classmethod
+    def defaults(cls):
+        return {
+            "max_gps_accuracy": getattr(settings, "QALQON_MAX_GPS_ACCURACY", 150),
+            "start_early_minutes": getattr(settings, "QALQON_START_EARLY_MINUTES", 60),
+            "finish_grace_hours": getattr(settings, "QALQON_FINISH_GRACE_HOURS", 6),
+        }
+
+    @classmethod
+    def load(cls):
+        return cls.objects.filter(pk=1).first() or cls(pk=1, **cls.defaults())
+
+
+_conf_cache = {}
+
+
+def qalqon_conf():
+    """Joriy sozlamalar lug'ati (30 soniya keshlanadi; saqlanganda darhol yangilanadi)."""
+    import time
+
+    cached = _conf_cache.get("conf")
+    if cached and time.monotonic() - cached[0] < 30:
+        return cached[1]
+    try:
+        obj = QalqonSettings.objects.filter(pk=1).first()
+    except Exception:  # noqa: BLE001 — jadval hali yaratilmagan (migrate oldidan)
+        obj = None
+    conf = QalqonSettings.defaults()
+    if obj:
+        conf.update(max_gps_accuracy=obj.max_gps_accuracy, start_early_minutes=obj.start_early_minutes,
+                    finish_grace_hours=obj.finish_grace_hours)
+    _conf_cache["conf"] = (time.monotonic(), conf)
+    return conf

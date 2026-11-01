@@ -45,5 +45,6 @@ urlpatterns = [
     path("binolar/<int:pk>/ochirish/", mv.building_delete, name="building_delete"),
 
     path("statistika/", mv.stats, name="stats"),
+    path("sozlamalar/", mv.settings_view, name="settings"),
     path("statistika/excel/", mv.stats_export, name="stats_export"),
 ]

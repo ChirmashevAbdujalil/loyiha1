@@ -453,3 +453,42 @@ class ViolatorListTests(TestCase):
         wb = load_workbook(BytesIO(x.content))
         self.assertIn("Qonunbuzar talabalar", wb.sheetnames)
         self.assertEqual(wb["Qonunbuzar talabalar"].max_row - 4, len(r.context["violators"]))
+
+
+class QalqonSettingsTests(TestCase):
+    def setUp(self):
+        from .models import _conf_cache
+
+        _conf_cache.clear()
+        self.addCleanup(_conf_cache.clear)
+
+    def test_admin_changes_gps_accuracy(self):
+        from .models import qalqon_conf
+
+        head = User.objects.create_user("boss", password="x12345", role=User.Role.HEAD)
+        leader = User.objects.create_user("s", password="x12345", role=User.Role.QALQON_LEADER)
+        self.client.force_login(leader)
+        self.assertEqual(self.client.get(reverse("qalqon:settings")).status_code, 403)
+        self.client.force_login(head)
+        self.assertEqual(qalqon_conf()["max_gps_accuracy"], 150)
+        r = self.client.post(reverse("qalqon:settings"),
+                             {"max_gps_accuracy": 250, "start_early_minutes": 60, "finish_grace_hours": 6})
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(qalqon_conf()["max_gps_accuracy"], 250)
+
+        # ±183 m endi qabul qilinadi (hudud ichida bo'lsa)
+        ttj = Building.objects.create(name="TTJ", latitude=TTJ[0], longitude=TTJ[1], radius_m=100)
+        duty = Duty.objects.create(date=timezone.localdate(), building=ttj, latitude=TTJ[0], longitude=TTJ[1],
+                                   radius_m=100, created_by=leader)
+        dm = DutyMember.objects.create(duty=duty, member=leader)
+        ok, _, _ = services.check_location(dm, "finish", NEAR[0], NEAR[1], 183)
+        self.assertTrue(ok)
+        ok, _, msg = services.check_location(dm, "finish", FAR[0], FAR[1], 183)
+        self.assertFalse(ok)  # hududdan tashqarida — baribir rad etiladi
+
+    def test_static_files_are_versioned(self):
+        u = User.objects.create_user("t", password="x12345", role=User.Role.TUTOR)
+        self.client.force_login(u)
+        r = self.client.get(reverse("dashboard"))
+        self.assertRegex(r.content.decode(), r"/static/css/app\.css\?v=\d+")
+        self.assertRegex(r.content.decode(), r"/static/js/app\.js\?v=\d+")

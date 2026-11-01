@@ -108,3 +108,26 @@ def status_label(status):
     from ..models import STATUS_LABELS
 
     return STATUS_LABELS.get(status, status)
+
+
+_static_versions = {}
+
+
+@register.simple_tag
+def vstatic(path):
+    """{% static %} + ?v=<fayl o'zgargan vaqt> — yangilanishdan keyin brauzer eski faylni keshdan olmaydi."""
+    import os
+
+    from django.conf import settings
+    from django.contrib.staticfiles import finders
+    from django.templatetags.static import static
+
+    version = None if settings.DEBUG else _static_versions.get(path)
+    if version is None:
+        found = finders.find(path)
+        if not found and settings.STATIC_ROOT:
+            candidate = os.path.join(settings.STATIC_ROOT, path)
+            found = candidate if os.path.exists(candidate) else None
+        version = str(int(os.path.getmtime(found))) if found else "0"
+        _static_versions[path] = version
+    return f"{static(path)}?v={version}"

@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from core.models import Faculty, User
 
-from .models import Building, Duty, MemberProfile, Violation
+from .models import Building, Duty, MemberProfile, QalqonSettings, Violation
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 
@@ -301,3 +301,9 @@ class ImportForm(forms.Form):
         if not f.name.lower().endswith((".xlsx", ".docx")):
             raise forms.ValidationError("Faqat Excel (.xlsx) yoki Word (.docx) fayl qabul qilinadi.")
         return f
+
+
+class QalqonSettingsForm(forms.ModelForm):
+    class Meta:
+        model = QalqonSettings
+        fields = ["max_gps_accuracy", "start_early_minutes", "finish_grace_hours"]
