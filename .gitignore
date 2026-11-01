@@ -14,3 +14,4 @@ venv/
 *.docx
 *.zip
 *_loginlar.xlsx
+!data/qalqon_azolar.zip

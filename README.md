@@ -101,6 +101,12 @@ Hujjatdagi yetishmayotgan yoki shubhali ma'lumotlar (12 xonali JSHSHIR, noto'g'r
 ekranga chiqariladi. Xuddi shuni sayt orqali ham qilish mumkin: **Qalqon → A'zolar → Exceldan import**
 (.docx ham qabul qilinadi). Pasport va JSHSHIR faqat sardor va admin uchun ko'rinadi.
 
+**Avtomatik yuklash:** `data/qalqon_azolar.zip` fayli loyihada bo'lsa, `python manage.py migrate`
+uni har bir bazaga (lokal va real serverda) **bir marta** avtomatik yuklaydi: avval demo ma'lumotlar
+o'chiriladi, keyin a'zolar rasmlari, shaxsiy ma'lumotlari va parollari bilan qo'shiladi. Keyingi
+`migrate`larda qayta yuklanmaydi (a'zolar o'zgartirgan parollar saqlanadi). Arxivni repoga qo'shish
+uchun repo yopiq (private) bo'lishi shart.
+
 **Demo ma'lumotlarni o'chirish va haqiqiy a'zolarni boshqa serverga ko'chirish:**
 
 ```bash

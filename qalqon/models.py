@@ -360,3 +360,17 @@ class Violation(models.Model):
     def place(self):
         """Statistika uchun joy: talabaning TTJsi, bo'lmasa naryad binosi."""
         return self.dormitory or self.duty_member.duty.building
+
+
+class DataImport(models.Model):
+    """Repodagi boshlang'ich ma'lumotlar arxivi qaysi bazaga allaqachon yuklanganini eslab qoladi."""
+
+    name = models.CharField(max_length=255)
+    checksum = models.CharField(max_length=64)
+    loaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("name", "checksum")]
+
+    def __str__(self):
+        return f"{self.name} ({self.loaded_at:%Y-%m-%d %H:%M})"

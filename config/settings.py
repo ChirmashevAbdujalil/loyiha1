@@ -110,3 +110,5 @@ QALQON_FINISH_GRACE_HOURS = int(os.environ.get("QALQON_FINISH_GRACE_HOURS", 6))
 # GPS aniqligi shundan yomon (metr) bo'lsa, joylashuv qabul qilinmaydi
 QALQON_MAX_GPS_ACCURACY = int(os.environ.get("QALQON_MAX_GPS_ACCURACY", 150))
 QALQON_MAX_PHOTO_SIZE = 15 * 1024 * 1024
+# migrate'dan keyin bir marta avtomatik yuklanadigan Qalqon a'zolari arxivi (bo'sh qiymat — o'chirish)
+QALQON_INITIAL_DATA = os.environ.get("QALQON_INITIAL_DATA", str(BASE_DIR / "data" / "qalqon_azolar.zip"))
