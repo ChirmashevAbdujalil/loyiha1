@@ -9,3 +9,8 @@ staticfiles/
 venv/
 .idea/
 .vscode/
+
+# Shaxsiy ma'lumotli fayllar (a'zolar ro'yxati, arxivlar, loginlar)
+*.docx
+*.zip
+*_loginlar.xlsx

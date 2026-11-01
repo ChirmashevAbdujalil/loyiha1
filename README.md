@@ -101,6 +101,18 @@ Hujjatdagi yetishmayotgan yoki shubhali ma'lumotlar (12 xonali JSHSHIR, noto'g'r
 ekranga chiqariladi. Xuddi shuni sayt orqali ham qilish mumkin: **Qalqon → A'zolar → Exceldan import**
 (.docx ham qabul qilinadi). Pasport va JSHSHIR faqat sardor va admin uchun ko'rinadi.
 
+**Demo ma'lumotlarni o'chirish va haqiqiy a'zolarni boshqa serverga ko'chirish:**
+
+```bash
+python manage.py clear_demo_data                                       # demo ma'lumotlarni o'chiradi
+python manage.py export_qalqon_bundle qalqon_azolar.zip                # a'zolar + rasmlar + parol xeshlari
+python manage.py import_qalqon_bundle qalqon_azolar.zip --clear-demo   # boshqa serverda (lokal yoki real)
+```
+
+Arxivdan yuklanganda loginlar va parollar arxiv yaratilgan serverdagi bilan bir xil bo'ladi.
+Arxivda pasport, JSHSHIR, manzil va rasmlar bor — uni ochiq repoga qo'shmang (`*.zip`, `*.docx`
+`.gitignore`da), serverga yopiq kanal (masalan, `scp`) orqali yuboring.
+
 **Excel (.xlsx) ro'yxatdan:**
 
 ```bash

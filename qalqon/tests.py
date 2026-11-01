@@ -1,4 +1,5 @@
 import datetime as dt
+import io
 import shutil
 import tempfile
 from io import BytesIO
@@ -346,3 +347,30 @@ class DocxImportTests(TestCase):
         # Oddiy a'zo pasport ma'lumotlarini ko'ra olmaydi
         self.client.force_login(User.objects.get(last_name="Namunova"))
         self.assertEqual(self.client.get(reverse("qalqon:member_detail", args=[u.pk])).status_code, 403)
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class BundleAndCleanupTests(TestCase):
+    def test_bundle_roundtrip_keeps_passwords(self):
+        from django.core.management import call_command
+
+        from .bundle import export_bundle, import_bundle
+        from .docx_import import parse_docx, save_records
+
+        created = save_records(parse_docx(_make_docx(SAMPLE_ROWS)))["created"]
+        out = tempfile.mktemp(suffix=".zip", dir=MEDIA)
+        self.assertEqual(export_bundle(out), 3)
+        User.objects.all().delete()
+        Faculty.objects.all().delete()
+        call_command("seed_demo", stdout=io.StringIO())
+        call_command("seed_qalqon", stdout=io.StringIO())
+        call_command("clear_demo_data", yes=True, stdout=io.StringIO())
+        self.assertFalse(User.objects.filter(username__in=["tyutor1", "qalqon1", "sardor"]).exists())
+        self.assertEqual(Duty.objects.count(), 0)
+        result = import_bundle(out)
+        self.assertEqual(result["created"], 3)
+        for item in created:
+            u = User.objects.get(username=item["user"].username)
+            self.assertTrue(u.check_password(item["password"]))
+            self.assertTrue(u.qalqon_profile.photo)
+        self.assertEqual(import_bundle(out)["updated"], 3)
