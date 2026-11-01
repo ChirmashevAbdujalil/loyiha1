@@ -37,6 +37,8 @@ def _faculty_groups(form):
 
 @login_required
 def task_list(request):
+    if request.user.is_qalqon_only:
+        return redirect("qalqon:calendar")
     if not request.user.is_head:
         return my_assignments(request)
     tasks = Task.objects.select_related("created_by").annotate(

@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "core",
+    "qalqon",
 ]
 
 MIDDLEWARE = [
@@ -100,3 +101,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 MESSAGE_TAGS = {
     40: "danger",
 }
+
+# ---------------------------------------------------------------- Qalqon
+# Naryadni boshlash tugmasi boshlanish vaqtidan necha daqiqa oldin faollashadi
+QALQON_START_EARLY_MINUTES = int(os.environ.get("QALQON_START_EARLY_MINUTES", 60))
+# Tugash vaqtidan keyin necha soat ichida naryadni yakunlash mumkin
+QALQON_FINISH_GRACE_HOURS = int(os.environ.get("QALQON_FINISH_GRACE_HOURS", 6))
+# GPS aniqligi shundan yomon (metr) bo'lsa, joylashuv qabul qilinmaydi
+QALQON_MAX_GPS_ACCURACY = int(os.environ.get("QALQON_MAX_GPS_ACCURACY", 150))
+QALQON_MAX_PHOTO_SIZE = 15 * 1024 * 1024

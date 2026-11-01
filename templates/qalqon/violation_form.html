@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}Qonunbuzarlik{% endblock %}
+{% block crumb %}Qalqon · Qonunbuzarlik{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'qalqon:duty_detail' duty.pk %}"><i data-lucide="arrow-left"></i> Naryad</a>
+<div class="page-head">
+  <div><h1>{% if violation %}Qonunbuzarlikni tahrirlash{% else %}Qonunbuzarlikni qayd etish{% endif %}</h1>
+  <div class="sub">{{ duty.building.name }} · {{ duty.date|uz_date }} · {{ duty.start_time|time:'H:i' }}–{{ duty.end_time|time:'H:i' }}</div></div>
+</div>
+<form method="post" enctype="multipart/form-data" class="card" style="max-width:920px">{% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.GET.next }}">
+  {% if form.non_field_errors %}<div class="card-body"><div class="alert alert-danger">{{ form.non_field_errors }}</div></div>{% endif %}
+  <div class="card-head"><i data-lucide="siren" style="color:var(--red)"></i><h3>Qonunbuzarlik</h3></div>
+  <div class="card-body form-grid">
+    {% include "includes/field.html" with field=form.category %}
+    {% include "includes/field.html" with field=form.occurred_at %}
+  </div>
+  <div class="card-head" style="border-top:1px solid var(--border)"><i data-lucide="user-round-x"></i><h3>Talaba haqida</h3></div>
+  <div class="card-body form-grid">
+    {% include "includes/field.html" with field=form.student_name full=1 %}
+    {% include "includes/field.html" with field=form.faculty %}
+    {% include "includes/field.html" with field=form.direction %}
+    {% include "includes/field.html" with field=form.group_name %}
+    {% include "includes/field.html" with field=form.course %}
+    {% include "includes/field.html" with field=form.dormitory %}
+    {% include "includes/field.html" with field=form.room %}
+    {% include "includes/field.html" with field=form.tutor %}
+    {% include "includes/field.html" with field=form.tutor_name %}
+  </div>
+  <div class="card-head" style="border-top:1px solid var(--border)"><i data-lucide="message-square-text"></i><h3>Izoh</h3></div>
+  <div class="card-body form-grid">
+    {% include "includes/field.html" with field=form.description full=1 %}
+    <div class="field full">
+      <label>{{ form.photo.label }}</label>
+      <label class="dropzone" data-list="v-photo" style="padding:14px">
+        <i data-lucide="camera"></i><div class="small muted">Rasmga olish yoki tanlash</div>
+        <input type="file" name="photo" accept="image/*">
+      </label>
+      {% for e in form.photo.errors %}<div class="error">{{ e }}</div>{% endfor %}
+      <div class="file-list" id="v-photo"></div>
+    </div>
+  </div>
+  <div class="card-body form-actions" style="border-top:1px solid var(--border)">
+    <a class="btn" href="{% url 'qalqon:duty_detail' duty.pk %}">Bekor qilish</a>
+    {% if not violation %}<button class="btn" type="submit" name="add_another" value="1"><i data-lucide="copy-plus"></i> Saqlash va yana qo'shish</button>{% endif %}
+    <button class="btn btn-primary" type="submit"><i data-lucide="save"></i> Saqlash</button>
+  </div>
+</form>
+{{ tutor_faculties|json_script:"tutor-faculties" }}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var map = JSON.parse(document.getElementById("tutor-faculties").textContent);
+  var fac = document.getElementById("id_faculty");
+  var tutor = document.getElementById("id_tutor");
+  var all = Array.prototype.slice.call(tutor.options);
+  function filter() {
+    var f = fac.value;
+    var current = tutor.value;
+    tutor.innerHTML = "";
+    all.forEach(function (o) {
+      if (!o.value || !f || String(map[o.value]) === f) tutor.appendChild(o);
+    });
+    tutor.value = Array.prototype.some.call(tutor.options, function (o) { return o.value === current; }) ? current : "";
+  }
+  fac.addEventListener("change", filter);
+  filter();
+})();
+</script>
+{% endblock %}

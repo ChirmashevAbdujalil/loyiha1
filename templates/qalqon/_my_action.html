@@ -1,0 +1,59 @@
+{% load core_tags qalqon_tags %}
+<div class="mb-3">
+{% if dm.status == 'scheduled' %}
+  {% if dm.start_state == 'ok' %}
+    <form class="action-card go qs-finished" method="post" action="{% url 'qalqon:duty_start' dm.pk %}" data-geo
+          data-lat="{{ duty.latitude|stringformat:'s' }}" data-lng="{{ duty.longitude|stringformat:'s' }}" data-radius="{{ duty.radius_m }}"
+          data-max-accuracy="{{ max_accuracy|default:150 }}" data-map="duty-map">{% csrf_token %}
+      <span class="big-ic"><i data-lucide="map-pin"></i></span>
+      <h3>Navbat kuningiz keldi</h3>
+      <div class="muted">Bino hududiga ({{ duty.radius_m }} m radius) yetib kelgach, tugmani bosing — joylashuvingiz avtomatik tekshiriladi.</div>
+      <input type="hidden" name="latitude"><input type="hidden" name="longitude"><input type="hidden" name="accuracy">
+      <button class="btn btn-success btn-xl" type="submit" data-geo-submit><i data-lucide="play"></i> Naryadni boshlash</button>
+      <div class="geo-status"></div>
+    </form>
+  {% elif dm.start_state == 'too_early' %}
+    <div class="action-card wait qs-today">
+      <span class="big-ic"><i data-lucide="hourglass"></i></span>
+      <h3>Bugun naryadingiz bor</h3>
+      <div class="muted">«Naryadni boshlash» tugmasi soat <b>{{ duty.start_window_opens|time:'H:i' }}</b> da faollashadi. Naryad {{ duty.start_time|time:'H:i' }} da boshlanadi.</div>
+    </div>
+  {% elif dm.start_state == 'not_today' %}
+    <div class="action-card wait qs-scheduled">
+      <span class="big-ic"><i data-lucide="calendar-clock"></i></span>
+      <h3>Naryad kuni: {{ duty.date|uz_date_wd }}</h3>
+      <div class="muted">«Naryadni boshlash» tugmasi faqat navbat kuni chiqadi.</div>
+    </div>
+  {% else %}
+    <div class="action-card wait qs-missed">
+      <span class="big-ic"><i data-lucide="x-circle"></i></span>
+      <h3>Naryadga chiqilmagan</h3>
+      <div class="muted">Naryad vaqti tugagan, u boshlanmagan.</div>
+    </div>
+  {% endif %}
+{% elif dm.status == 'active' %}
+  <div class="action-card live qs-active">
+    <span class="big-ic"><i data-lucide="radio"></i></span>
+    <h3><span class="pulse"></span> Siz naryaddasiz</h3>
+    <div class="muted">Boshlangan: <b>{{ dm.started_at|time:'H:i' }}</b> · binogacha {{ dm.start_distance|meters }}{% if dm.is_late_start %} · <span style="color:var(--red-text)">kechikib boshlangan</span>{% endif %}</div>
+    {% if dm.can_add_violation %}
+      <a class="btn btn-primary btn-xl" href="{% url 'qalqon:violation_add' dm.pk %}"><i data-lucide="siren"></i> Qonunbuzarlikni qayd etish</a>
+    {% endif %}
+    {% if dm.finish_state == 'ok' %}
+      <a class="btn btn-success btn-xl" href="{% url 'qalqon:duty_finish' dm.pk %}"><i data-lucide="flag"></i> Naryadni yakunlash</a>
+    {% elif dm.finish_state == 'too_early' %}
+      <div class="small muted"><i data-lucide="info" style="width:13px;height:13px;vertical-align:-2px"></i> «Naryadni yakunlash» tugmasi soat <b>{{ duty.end_time|time:'H:i' }}</b> dan keyin chiqadi.</div>
+    {% else %}
+      <div class="alert alert-warning">Naryadni yakunlash muddati o'tib ketgan. Sardorga murojaat qiling.</div>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="action-card qs-finished" style="border-color:#b7e4c7">
+    <span class="big-ic"><i data-lucide="check-circle-2"></i></span>
+    <h3>Naryad yakunlangan</h3>
+    <div class="muted">{{ dm.started_at|time:'H:i' }} – {{ dm.finished_at|time:'H:i' }} · {{ dm.finished_at|uz_date }}</div>
+    {% if dm.photo %}<a href="{% url 'qalqon:duty_photo' dm.pk %}" target="_blank"><img src="{% url 'qalqon:duty_photo' dm.pk %}" alt="Yakuniy rasm" style="max-width:100%;max-height:260px;border-radius:12px"></a>{% endif %}
+    {% if dm.finish_note %}<div class="desc-text small">{{ dm.finish_note }}</div>{% endif %}
+  </div>
+{% endif %}
+</div>

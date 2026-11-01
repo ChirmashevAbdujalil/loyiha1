@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load core_tags qalqon_tags %}
+{% block title %}{{ member.full_name }}{% endblock %}
+{% block crumb %}Qalqon · A'zolar{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'qalqon:member_list' %}"><i data-lucide="arrow-left"></i> A'zolar</a>
+<div class="page-head">
+  <span class="avatar lg">{{ member.initials }}</span>
+  <div>
+    <h1>{{ member.full_name }} {{ member.middle_name }}</h1>
+    <div class="sub flex flex-wrap">
+      <span class="badge primary">{{ member.get_role_display }}</span>
+      <span>{{ member.faculty.name|default:'—' }}</span>
+      {% if profile.direction %}<span>· {{ profile.direction }}</span>{% endif %}
+      {% if profile.group_name %}<span>· {{ profile.group_name }}</span>{% endif %}
+      {% if profile.course %}<span>· {{ profile.course }}-kurs</span>{% endif %}
+      {% if member.phone %}<span>· {{ member.phone }}</span>{% endif %}
+      <span>· login: <code>{{ member.username }}</code></span>
+      {% if not member.is_active %}<span class="badge st-overdue">Nofaol</span>{% endif %}
+    </div>
+  </div>
+  <div class="right flex">
+    <a class="btn" href="{% url 'qalqon:calendar' %}?member={{ member.pk }}"><i data-lucide="calendar-days"></i> Kalendarda</a>
+    {% if user.is_qalqon_admin or member.role == 'qalqon_member' %}
+    <a class="btn" href="{% url 'qalqon:member_edit' member.pk %}"><i data-lucide="pencil"></i> Tahrirlash</a>
+    <form method="post" action="{% url 'qalqon:member_delete' member.pk %}" data-confirm="{{ member.full_name }} o'chirilsinmi? (Naryadlarda qatnashgan bo'lsa, nofaol qilinadi)">{% csrf_token %}
+      <button class="btn btn-danger" type="submit"><i data-lucide="trash-2"></i></button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+<div class="stats">
+  <div class="stat st-total"><span class="ic"><i data-lucide="shield"></i></span><div><div class="v">{{ dms|length }}</div><div class="l">Jami naryadlar</div></div></div>
+  <div class="stat qs-finished"><span class="ic"><i data-lucide="check-circle-2"></i></span><div><div class="v">{{ counts|get:'finished' }}</div><div class="l">Yakunlangan</div></div></div>
+  <div class="stat qs-missed"><span class="ic"><i data-lucide="x-circle"></i></span><div><div class="v">{{ counts|get:'missed' }}</div><div class="l">Chiqmagan</div></div></div>
+  <div class="stat qs-unfinished"><span class="ic"><i data-lucide="alert-triangle"></i></span><div><div class="v">{{ counts|get:'unfinished' }}</div><div class="l">Yakunlamagan</div></div></div>
+  <div class="stat st-overdue"><span class="ic"><i data-lucide="siren"></i></span><div><div class="v">{{ violations_total }}</div><div class="l">Qayd etgan qonunbuzarlik</div></div></div>
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Sana</th><th>Vaqt</th><th>Bino</th><th>Holat</th><th>Boshladi</th><th>Yakunladi</th><th>Qonunbuzarlik</th></tr></thead>
+      <tbody>
+      {% for dm in dms %}
+        <tr>
+          <td class="nowrap"><a class="title-cell" href="{% url 'qalqon:duty_detail' dm.duty_id %}">{{ dm.duty.date|short_date }}</a></td>
+          <td class="nowrap">{{ dm.duty.start_time|time:'H:i' }}–{{ dm.duty.end_time|time:'H:i' }}</td>
+          <td>{{ dm.duty.building.name }}</td>
+          <td><span class="badge qs-{{ dm.display_status }}"><i data-lucide="{{ dm.display_status|duty_icon }}"></i> {{ dm.display_status_label }}</span></td>
+          <td class="small">{% if dm.started_at %}{{ dm.started_at|time:'H:i' }} <span class="text-muted">({{ dm.start_distance|meters }})</span>{% if dm.is_late_start %} <span style="color:var(--red-text)">kechikib</span>{% endif %}{% else %}—{% endif %}</td>
+          <td class="small">{% if dm.finished_at %}{{ dm.finished_at|time:'H:i' }} <span class="text-muted">({{ dm.finish_distance|meters }})</span>{% else %}—{% endif %}</td>
+          <td>{% if dm.v_count %}<span class="badge st-overdue">{{ dm.v_count }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7"><div class="empty"><i data-lucide="shield"></i><div class="t">Hali naryadga qo'yilmagan</div></div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

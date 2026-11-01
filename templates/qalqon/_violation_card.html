@@ -1,0 +1,29 @@
+{% load core_tags %}
+<div class="v-card">
+  <div class="top">
+    <span class="badge st-overdue"><i data-lucide="siren"></i> {{ v.get_category_display }}</span>
+    <span class="small muted">{{ v.occurred_at|uz_datetime }}</span>
+    {% if v.confirmed_at %}<span class="badge st-approved" title="Naryad yakunida tasdiqlangan"><i data-lucide="check"></i> Tasdiqlangan</span>{% endif %}
+    {% if editable %}
+      <div class="right flex">
+        <a class="btn btn-sm" href="{% url 'qalqon:violation_edit' v.pk %}?next={{ request.get_full_path|urlencode }}" title="Tahrirlash"><i data-lucide="pencil"></i></a>
+        <form method="post" action="{% url 'qalqon:violation_delete' v.pk %}" data-confirm="Qonunbuzarlik o'chirilsinmi?">{% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button class="btn btn-sm btn-danger" type="submit" title="O'chirish"><i data-lucide="trash-2"></i></button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+  <div class="who mt-2">{{ v.student_name }}</div>
+  <div class="meta">
+    <span>Fakultet: <b>{{ v.faculty.name }}</b></span>
+    {% if v.direction %}<span>Yo'nalish: <b>{{ v.direction }}</b></span>{% endif %}
+    <span>Guruh: <b>{{ v.group_name }}</b></span>
+    <span><b>{{ v.course }}</b>-kurs</span>
+    {% if v.dormitory %}<span>TTJ: <b>{{ v.dormitory.label }}</b>{% if v.room %}, xona <b>{{ v.room }}</b>{% endif %}</span>{% elif v.room %}<span>Xona: <b>{{ v.room }}</b></span>{% endif %}
+    <span>Tyutori: <b>{{ v.tutor_display|default:'—' }}</b></span>
+    {% if show_recorder %}<span>Qayd etdi: <b>{{ v.duty_member.member.full_name }}</b></span>{% endif %}
+  </div>
+  <div class="desc-text small mt-2">{{ v.description }}</div>
+  {% if v.photo %}<a class="small mt-1" style="display:inline-flex;gap:4px;align-items:center" href="{% url 'qalqon:violation_photo' v.pk %}" target="_blank"><i data-lucide="image" style="width:14px;height:14px"></i> Rasm</a>{% endif %}
+</div>

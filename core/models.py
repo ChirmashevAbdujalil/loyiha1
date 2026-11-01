@@ -29,8 +29,11 @@ class User(AbstractUser):
     class Role(models.TextChoices):
         HEAD = "head", "Bo'lim boshlig'i"
         TUTOR = "tutor", "Tyutor"
+        QALQON_ADMIN = "qalqon_admin", "Qalqon — umumiy admin"
+        QALQON_LEADER = "qalqon_leader", "Qalqon guruhi sardori"
+        QALQON_MEMBER = "qalqon_member", "Qalqon guruhi a'zosi"
 
-    role = models.CharField("Rol", max_length=10, choices=Role.choices, default=Role.TUTOR)
+    role = models.CharField("Rol", max_length=20, choices=Role.choices, default=Role.TUTOR)
     middle_name = models.CharField("Otasining ismi", max_length=150, blank=True)
     phone = models.CharField("Telefon", max_length=30, blank=True)
     position = models.CharField("Lavozimi", max_length=255, blank=True)
@@ -58,6 +61,31 @@ class User(AbstractUser):
     @property
     def is_tutor(self):
         return self.role == self.Role.TUTOR and not self.is_superuser
+
+    # ---- Qalqon jamoatchilik guruhi
+    @property
+    def is_qalqon_admin(self):
+        """Umumiy admin: barcha qalqon ma'lumotlari va statistikasi (bo'lim boshlig'i ham)."""
+        return self.role in (self.Role.QALQON_ADMIN, self.Role.HEAD) or self.is_superuser
+
+    @property
+    def is_qalqon_leader(self):
+        return self.role == self.Role.QALQON_LEADER
+
+    @property
+    def is_qalqon_staff(self):
+        """Sardor yoki admin — naryad qo'yish, a'zolar, statistika."""
+        return self.is_qalqon_leader or self.is_qalqon_admin
+
+    @property
+    def is_qalqon_member(self):
+        return self.role == self.Role.QALQON_MEMBER
+
+    @property
+    def is_qalqon_only(self):
+        """Faqat Qalqon tizimidan foydalanadigan foydalanuvchi (ijro tizimi ko'rinmaydi)."""
+        return self.role in (self.Role.QALQON_ADMIN, self.Role.QALQON_LEADER, self.Role.QALQON_MEMBER) \
+            and not self.is_superuser
 
     @property
     def full_name(self):
@@ -252,6 +280,8 @@ class Notification(models.Model):
         REJECTED = "rejected", "Qaytarildi"
         UPDATED = "updated", "O'zgartirildi"
         REMINDER = "reminder", "Eslatma"
+        DUTY = "duty", "Naryad"
+        VIOLATION = "violation", "Qonunbuzarlik"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"

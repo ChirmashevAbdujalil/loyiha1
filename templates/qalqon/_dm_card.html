@@ -1,0 +1,10 @@
+{% load core_tags qalqon_tags %}
+<a class="duty-card qs-{{ dm.display_status }}" href="{% url 'qalqon:duty_detail' dm.duty_id %}" style="border-left:3px solid var(--c)">
+  <div class="row1">
+    <span class="badge qs-{{ dm.display_status }}"><i data-lucide="{{ dm.display_status|duty_icon }}"></i> {{ dm.display_status_label }}</span>
+    {% if dm.v_count %}<span class="badge st-overdue" title="Qayd etilgan qonunbuzarliklar"><i data-lucide="siren"></i> {{ dm.v_count }}</span>{% endif %}
+    <span class="small muted right">{{ dm.duty.date|short_date }}</span>
+  </div>
+  <div class="bld mt-2">{{ dm.duty.building.name }}</div>
+  <div class="small muted"><i data-lucide="clock" style="width:13px;height:13px;vertical-align:-2px"></i> {{ dm.duty.date|uz_date_wd }}, {{ dm.duty.start_time|time:'H:i' }}–{{ dm.duty.end_time|time:'H:i' }}</div>
+</a>

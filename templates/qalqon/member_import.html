@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}A'zolarni import qilish{% endblock %}
+{% block crumb %}Qalqon · A'zolar{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'qalqon:member_list' %}"><i data-lucide="arrow-left"></i> A'zolar</a>
+<div class="page-head"><div><h1>A'zolarni Excel fayldan qo'shish</h1>
+  <div class="sub">Har bir a'zo uchun login va parol avtomatik yaratiladi. Natijani Excel ko'rinishida yuklab olib, a'zolarga tarqating.</div></div></div>
+<div class="detail-grid">
+  <form method="post" enctype="multipart/form-data" class="card">{% csrf_token %}
+    <div class="card-head"><i data-lucide="file-up"></i><h3>Fayl yuklash</h3></div>
+    <div class="card-body" style="display:grid;gap:14px">
+      <label class="dropzone" data-list="import-file">
+        <i data-lucide="file-spreadsheet"></i><div class="t">.xlsx faylni tanlang yoki shu yerga tashlang</div>
+        <input type="file" name="file" accept=".xlsx" required>
+      </label>
+      {% for e in form.file.errors %}<div class="error" style="color:var(--red-text)">{{ e }}</div>{% endfor %}
+      <div class="file-list" id="import-file"></div>
+      <label class="check"><input type="checkbox" name="create_faculties" value="1" checked> Bazada yo'q fakultetlarni avtomatik qo'shish</label>
+      <button class="btn btn-primary btn-lg" type="submit"><i data-lucide="upload"></i> Import qilish</button>
+    </div>
+  </form>
+  <div class="card">
+    <div class="card-head"><i data-lucide="info"></i><h3>Fayl tuzilishi</h3></div>
+    <div class="card-body small" style="display:grid;gap:8px">
+      <div>Birinchi qatorda ustun nomlari bo'lishi kerak:</div>
+      <div><b>Familiya</b>, <b>Ism</b>, Otasining ismi (yoki bitta <b>F.I.Sh</b> ustuni), <b>Fakultet</b>, Yo'nalish, Guruh, Kurs, Telefon, TTJ, Xona.</div>
+      <div class="muted">Login / Parol ustunlari ixtiyoriy — bo'lmasa avtomatik yaratiladi. «Rol» ustunida «sardor» yozilsa, sardor sifatida qo'shiladi.</div>
+      <a class="btn btn-sm" href="{% url 'qalqon:member_import_template' %}" style="justify-self:start"><i data-lucide="download"></i> Namuna faylni yuklab olish</a>
+    </div>
+  </div>
+</div>
+
+{% if result %}
+<div class="card mt-3">
+  <div class="card-head"><i data-lucide="list-checks"></i><h3>Natija</h3>
+    {% if result.created %}<a class="btn btn-success btn-sm right" href="{% url 'qalqon:member_import_credentials' %}"><i data-lucide="file-spreadsheet"></i> Loginlar va parollarni yuklab olish</a>{% endif %}</div>
+  <div class="card-body" style="display:grid;gap:12px">
+    <div class="flex flex-wrap">
+      <span class="badge st-approved">Qo'shildi: {{ result.created|length }}</span>
+      <span class="badge st-submitted">O'tkazib yuborildi: {{ result.skipped|length }}</span>
+      <span class="badge st-overdue">Xato: {{ result.errors|length }}</span>
+      {% if result.new_faculties %}<span class="badge primary">Yangi fakultetlar: {{ result.new_faculties|join:", " }}</span>{% endif %}
+    </div>
+    {% if result.created %}
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>№</th><th>F.I.Sh</th><th>Fakultet</th><th>Login</th><th>Parol</th></tr></thead>
+      <tbody>{% for c in result.created %}<tr><td>{{ forloop.counter }}</td><td>{{ c.user.full_name }} {{ c.user.middle_name }}</td><td class="small">{{ c.user.faculty.name }}</td><td><code>{{ c.user.username }}</code></td><td><code>{{ c.password }}</code></td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% endif %}
+    {% for s in result.skipped %}<div class="small muted">• {{ s }}</div>{% endfor %}
+    {% for e in result.errors %}<div class="small" style="color:var(--red-text)">• {{ e }}</div>{% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

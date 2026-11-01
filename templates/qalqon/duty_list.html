@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load core_tags qalqon_tags %}
+{% block title %}Naryadlar{% endblock %}
+{% block crumb %}Qalqon · Naryadlar{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Naryadlar</h1><div class="sub">{{ date_from|uz_date }} — {{ date_to|uz_date }} · {{ duties|length }} ta</div></div>
+  <a class="btn btn-primary right" href="{% url 'qalqon:duty_create' %}"><i data-lucide="shield-plus"></i> Naryad qo'yish</a>
+</div>
+<form class="card card-body flex flex-wrap mb-3" method="get" style="gap:10px;align-items:end">
+  <div class="field"><label>Dan</label><input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}"></div>
+  <div class="field"><label>Gacha</label><input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}"></div>
+  <div class="field"><label>Bino</label><select name="building"><option value="">Barchasi</option>{% for b in buildings %}<option value="{{ b.pk }}" {% if b.pk == building_id %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select></div>
+  <button class="btn" type="submit"><i data-lucide="filter"></i> Ko'rsatish</button>
+</form>
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Sana</th><th>Vaqt</th><th>Bino</th><th>Navbatchilar</th><th>Holat</th><th>Qonunbuzarlik</th><th style="width:1%"></th></tr></thead>
+      <tbody>
+      {% for d in duties %}
+        <tr>
+          <td class="nowrap"><b>{{ d.date|short_date }}</b><div class="small muted">{{ d.number }}</div></td>
+          <td class="nowrap">{{ d.start_time|time:'H:i' }}–{{ d.end_time|time:'H:i' }}</td>
+          <td><a class="title-cell" href="{% url 'qalqon:duty_detail' d.pk %}">{{ d.building.name }}</a><div class="small muted">radius {{ d.radius_m }} m</div></td>
+          <td style="max-width:320px" class="small">{% for dm in d.dms %}<span class="nowrap"><span style="color:var(--c)" class="qs-{{ dm.display_status }}">●</span> {{ dm.member.short_name }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+          <td><div class="mini-stats">{% for st, n in d.counts %}<span class="badge qs-{{ st }}" title="{{ st|duty_label }}"><i data-lucide="{{ st|duty_icon }}"></i> {{ n }}</span>{% endfor %}</div></td>
+          <td>{% if d.v_count %}<span class="badge st-overdue"><i data-lucide="siren"></i> {{ d.v_count }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+          <td class="nowrap"><a class="btn btn-sm" href="{% url 'qalqon:duty_detail' d.pk %}">Ochish</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7"><div class="empty"><i data-lucide="shield"></i><div class="t">Bu davrda naryad yo'q</div></div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

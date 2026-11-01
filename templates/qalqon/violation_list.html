@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}Qonunbuzarliklar{% endblock %}
+{% block crumb %}Qalqon · Qonunbuzarliklar{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Qonunbuzarliklar</h1><div class="sub">{{ f.from|uz_date }} — {{ f.to|uz_date }} · {{ count }} ta</div></div>
+  <a class="btn btn-success right" href="{% url 'qalqon:violation_export' %}?{{ query }}"><i data-lucide="file-spreadsheet"></i> Excel yuklash</a>
+</div>
+<form class="card card-body mb-3" method="get">
+  <div class="report-filters">
+    <div class="field"><label>Dan</label><input type="date" name="from" value="{{ f.from|date:'Y-m-d' }}"></div>
+    <div class="field"><label>Gacha</label><input type="date" name="to" value="{{ f.to|date:'Y-m-d' }}"></div>
+    <div class="field"><label>Fakultet</label><select name="faculty"><option value="">Barchasi</option>{% for x in faculties %}<option value="{{ x.pk }}" {% if x.pk == f.faculty %}selected{% endif %}>{{ x.name }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Bino / TTJ</label><select name="building"><option value="">Barchasi</option>{% for x in buildings %}<option value="{{ x.pk }}" {% if x.pk == f.building %}selected{% endif %}>{{ x.name }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Turi</label><select name="category"><option value="">Barchasi</option>{% for k, l in categories %}<option value="{{ k }}" {% if k == f.category %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Kurs</label><select name="course"><option value="">Barchasi</option>{% for c in courses %}<option value="{{ c }}" {% if c == f.course %}selected{% endif %}>{{ c }}-kurs</option>{% endfor %}</select></div>
+  </div>
+  <div class="flex mt-3">
+    <div class="search grow"><i data-lucide="search"></i><input type="search" name="q" value="{{ f.q }}" placeholder="Talaba, guruh, xona yoki izoh"></div>
+    <button class="btn btn-primary" type="submit"><i data-lucide="filter"></i> Ko'rsatish</button>
+    <a class="btn" href="{% url 'qalqon:violation_list' %}">Tozalash</a>
+  </div>
+</form>
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Vaqt</th><th>Turi</th><th>Talaba</th><th>Fakultet / guruh</th><th>TTJ, xona</th><th>Tyutori</th><th>Izoh</th><th>Naryad</th></tr></thead>
+      <tbody>
+      {% for v in violations %}
+        <tr>
+          <td class="nowrap small">{{ v.occurred_at|date:'d.m.Y' }}<div class="text-muted">{{ v.occurred_at|time:'H:i' }}</div></td>
+          <td><span class="badge st-overdue">{{ v.get_category_display }}</span></td>
+          <td><b>{{ v.student_name }}</b>{% if v.photo %} <a href="{% url 'qalqon:violation_photo' v.pk %}" target="_blank" title="Rasm"><i data-lucide="image" style="width:14px;height:14px"></i></a>{% endif %}</td>
+          <td class="small">{{ v.faculty.label }}{% if v.direction %} · {{ v.direction }}{% endif %}<div class="text-muted">{{ v.group_name }} · {{ v.course }}-kurs</div></td>
+          <td class="small">{{ v.dormitory.label|default:'—' }}{% if v.room %}, {{ v.room }}{% endif %}</td>
+          <td class="small">{{ v.tutor_display|default:'—' }}</td>
+          <td class="small" style="max-width:280px">{{ v.description|truncatechars:120 }}</td>
+          <td class="small"><a href="{% url 'qalqon:duty_detail' v.duty_member.duty_id %}">{{ v.duty_member.duty.building.label }}</a><div class="text-muted">{{ v.duty_member.member.short_name }}</div></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8"><div class="empty"><i data-lucide="shield-check"></i><div class="t">Qonunbuzarlik topilmadi</div></div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% if count > 500 %}<div class="small muted mt-2">Faqat oxirgi 500 tasi ko'rsatildi — to'liq ro'yxat Excel faylda.</div>{% endif %}
+{% endblock %}

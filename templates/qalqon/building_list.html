@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Binolar va TTJ{% endblock %}
+{% block crumb %}Qalqon · Binolar{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Binolar va TTJlar</h1><div class="sub">Naryad joylari — koordinatalari va ruxsat etilgan radius bilan</div></div>
+  <a class="btn btn-primary right" href="{% url 'qalqon:building_create' %}"><i data-lucide="plus"></i> Bino qo'shish</a>
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Bino</th><th>Turi</th><th>Koordinata</th><th>Radius</th><th>Naryadlar</th><th>Qonunbuzarliklar</th><th style="width:1%"></th></tr></thead>
+      <tbody>
+      {% for b in buildings %}
+        <tr>
+          <td><div class="person"><span class="avatar"><i data-lucide="{% if b.kind == 'dorm' %}bed-double{% else %}building{% endif %}" style="width:15px;height:15px"></i></span>
+            <div><div class="n">{{ b.name }}{% if b.short_name %} <span class="badge primary" style="height:18px;font-size:10px">{{ b.short_name }}</span>{% endif %}</div><div class="s">{{ b.address|default:'' }}{% if not b.is_active %} · <span style="color:var(--red-text)">nofaol</span>{% endif %}</div></div></div></td>
+          <td class="small">{{ b.get_kind_display }}</td>
+          <td class="coord"><a href="https://www.google.com/maps?q={{ b.latitude|stringformat:'s' }},{{ b.longitude|stringformat:'s' }}" target="_blank" rel="noopener">{{ b.latitude|stringformat:'s' }}, {{ b.longitude|stringformat:'s' }}</a></td>
+          <td>{{ b.radius_m }} m</td>
+          <td><span class="badge plain">{{ b.duty_count }}</span></td>
+          <td>{% if b.violation_count %}<span class="badge st-overdue">{{ b.violation_count }}</span>{% else %}<span class="badge st-approved">0</span>{% endif %}</td>
+          <td class="nowrap"><div class="flex">
+            <a class="btn btn-sm" href="{% url 'qalqon:duty_create' %}?building={{ b.pk }}" title="Shu binoga naryad"><i data-lucide="shield-plus"></i></a>
+            <a class="btn btn-sm" href="{% url 'qalqon:building_edit' b.pk %}" title="Tahrirlash"><i data-lucide="pencil"></i></a>
+            <form method="post" action="{% url 'qalqon:building_delete' b.pk %}" data-confirm="«{{ b.name }}» o'chirilsinmi?">{% csrf_token %}<button class="btn btn-sm btn-danger" type="submit"><i data-lucide="trash-2"></i></button></form>
+          </div></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7"><div class="empty"><i data-lucide="building"></i><div class="t">Hali bino qo'shilmagan</div><a class="btn btn-sm btn-primary mt-2" href="{% url 'qalqon:building_create' %}"><i data-lucide="plus"></i> Bino qo'shish</a></div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -3,7 +3,7 @@ from collections import Counter, defaultdict
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from ..models import Assignment, Faculty, User
@@ -41,6 +41,8 @@ def _day_of(assignment, by):
 
 @login_required
 def dashboard(request):
+    if request.user.is_qalqon_only:
+        return redirect("qalqon:calendar")
     today = timezone.localdate()
     by = "deadline" if request.GET.get("by") == "deadline" else "exec"
     year = _int(request.GET.get("y"), today.year)

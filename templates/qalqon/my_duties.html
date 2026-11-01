@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load core_tags qalqon_tags %}
+{% block title %}Mening naryadlarim{% endblock %}
+{% block crumb %}Qalqon · Mening naryadlarim{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Mening naryadlarim</h1><div class="sub">Jami {{ total }} ta naryad</div></div></div>
+
+<div class="stats">
+  <div class="stat st-total"><span class="ic"><i data-lucide="shield"></i></span><div><div class="v">{{ total }}</div><div class="l">Jami</div></div></div>
+  <div class="stat qs-finished"><span class="ic"><i data-lucide="check-circle-2"></i></span><div><div class="v">{{ counts|get:'finished' }}</div><div class="l">Yakunlangan</div></div></div>
+  <div class="stat qs-scheduled"><span class="ic"><i data-lucide="calendar-clock"></i></span><div><div class="v">{{ upcoming|length }}</div><div class="l">Kelgusi</div></div></div>
+  <div class="stat qs-missed"><span class="ic"><i data-lucide="x-circle"></i></span><div><div class="v">{{ counts|get:'missed' }}</div><div class="l">Chiqilmagan</div></div></div>
+  <div class="stat qs-unfinished"><span class="ic"><i data-lucide="alert-triangle"></i></span><div><div class="v">{{ counts|get:'unfinished' }}</div><div class="l">Yakunlanmagan</div></div></div>
+</div>
+
+{% if current %}
+  <h3 class="mb-2" style="font-size:15px">Bugun / hozir</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px" class="mb-3">
+    {% for dm in current %}
+      <div class="card" style="margin:0">
+        <div class="card-body" style="display:grid;gap:12px">
+          {% include "qalqon/_dm_card.html" %}
+          <a class="btn btn-primary btn-xl" href="{% url 'qalqon:duty_detail' dm.duty_id %}">
+            {% if dm.status == 'scheduled' %}<i data-lucide="play"></i> Naryadni boshlashga o'tish{% elif dm.status == 'active' %}<i data-lucide="radio"></i> Naryad sahifasi{% else %}<i data-lucide="eye"></i> Ko'rish{% endif %}
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="stat-grid">
+  <div class="card">
+    <div class="card-head"><i data-lucide="calendar-clock"></i><h3>Kelgusi naryadlar</h3><span class="badge plain">{{ upcoming|length }}</span></div>
+    <div class="card-body" style="display:grid;gap:10px">
+      {% for dm in upcoming %}{% include "qalqon/_dm_card.html" %}{% empty %}<div class="empty" style="padding:16px"><i data-lucide="calendar"></i><div>Rejalashtirilgan naryad yo'q</div></div>{% endfor %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><i data-lucide="history"></i><h3>O'tgan naryadlar</h3><span class="badge plain">{{ history|length }}</span></div>
+    <div class="card-body" style="display:grid;gap:10px;max-height:640px;overflow-y:auto">
+      {% for dm in history %}{% include "qalqon/_dm_card.html" %}{% empty %}<div class="empty" style="padding:16px"><i data-lucide="history"></i><div>Hali naryad o'tmagan</div></div>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

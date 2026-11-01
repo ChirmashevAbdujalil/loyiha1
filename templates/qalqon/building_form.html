@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{% if building %}Binoni tahrirlash{% else %}Yangi bino{% endif %}{% endblock %}
+{% block crumb %}Qalqon · Binolar{% endblock %}
+{% block head %}{% include "qalqon/_leaflet.html" %}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'qalqon:building_list' %}"><i data-lucide="arrow-left"></i> Binolar</a>
+<div class="page-head"><div><h1>{% if building %}{{ building.name }}{% else %}Yangi bino / TTJ{% endif %}</h1><div class="sub">Koordinatani xaritadan bosib, qo'lda yoki joyida turib «Hozirgi joylashuvimni olish» orqali kiriting.</div></div></div>
+<form method="post" class="detail-grid">{% csrf_token %}
+  <div class="card">
+    <div class="card-body form-grid">
+      {% include "includes/field.html" with field=form.name full=1 %}
+      {% include "includes/field.html" with field=form.short_name %}
+      {% include "includes/field.html" with field=form.kind %}
+      {% include "includes/field.html" with field=form.address full=1 %}
+      {% include "includes/field.html" with field=form.latitude %}
+      {% include "includes/field.html" with field=form.longitude %}
+      {% include "includes/field.html" with field=form.radius_m %}
+      <div class="field" style="align-self:end"><label class="check">{{ form.is_active }} {{ form.is_active.label }}</label></div>
+    </div>
+    <div class="card-body form-actions" style="border-top:1px solid var(--border)">
+      <a class="btn" href="{% url 'qalqon:building_list' %}">Bekor qilish</a>
+      <button class="btn btn-primary" type="submit"><i data-lucide="save"></i> Saqlash</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body" style="display:grid;gap:10px">
+      <div id="pick-map" class="map" data-map data-pick="1" data-lat-input="id_latitude" data-lng-input="id_longitude" data-radius-input="id_radius_m"
+           data-lat="{{ form.latitude.value|default_if_none:''|stringformat:'s' }}" data-lng="{{ form.longitude.value|default_if_none:''|stringformat:'s' }}" data-radius="{{ form.radius_m.value|default:100 }}"></div>
+      <button type="button" class="btn" data-use-my-location data-lat-input="id_latitude" data-lng-input="id_longitude" data-map="pick-map"><i data-lucide="locate-fixed"></i> Hozirgi joylashuvimni olish</button>
+      <div class="small muted">Aylana — a'zolar naryadni boshlash va yakunlash uchun turishi kerak bo'lgan hudud.</div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}{% include "qalqon/_scripts.html" %}{% endblock %}

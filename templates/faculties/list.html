@@ -3,25 +3,26 @@
 {% block crumb %}Fakultetlar{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h1>Fakultetlar</h1><div class="sub">Tyutorlar fakultetlarga biriktiriladi. Avval fakultetlarni qo'shing.</div></div>
-  <a class="btn right" href="{% url 'tutor_list' %}"><i data-lucide="users"></i> Tyutorlar</a>
+  <div><h1>Fakultetlar</h1><div class="sub">Tyutorlar va Qalqon a'zolari fakultetlarga biriktiriladi. Avval fakultetlarni qo'shing.</div></div>
+  {% if user.is_head %}<a class="btn right" href="{% url 'tutor_list' %}"><i data-lucide="users"></i> Tyutorlar</a>{% endif %}
 </div>
 <div class="detail-grid">
   <div class="card">
     <div class="card-head"><h3>Fakultetlar ro'yxati</h3><span class="badge plain">{{ faculties|length }}</span></div>
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th style="width:50px">№</th><th>Nomi</th><th>Qisqa nomi</th><th>Tyutorlar</th><th style="width:1%"></th></tr></thead>
+        <thead><tr><th style="width:50px">№</th><th>Nomi</th><th>Qisqa nomi</th>{% if user.is_head %}<th>Tyutorlar</th>{% endif %}{% if user.is_qalqon_staff %}<th>Qalqon a'zolari</th>{% endif %}<th style="width:1%"></th></tr></thead>
         <tbody>
         {% for f in faculties %}
           <tr>
             <td class="muted">{{ forloop.counter }}</td>
             <td><div class="person"><span class="avatar"><i data-lucide="building-2" style="width:15px;height:15px"></i></span><span class="n">{{ f.name }}</span></div></td>
             <td>{% if f.short_name %}<span class="badge primary">{{ f.short_name }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
-            <td><a href="{% url 'tutor_list' %}?faculty={{ f.pk }}" class="badge plain"><i data-lucide="users"></i> {{ f.tutor_count }} ta</a></td>
+            {% if user.is_head %}<td><a href="{% url 'tutor_list' %}?faculty={{ f.pk }}" class="badge plain"><i data-lucide="users"></i> {{ f.tutor_count }} ta</a></td>{% endif %}
+            {% if user.is_qalqon_staff %}<td><a href="{% url 'qalqon:member_list' %}?faculty={{ f.pk }}" class="badge primary"><i data-lucide="shield"></i> {{ f.qalqon_count }} ta</a></td>{% endif %}
             <td class="nowrap">
               <div class="flex">
-                <a class="btn btn-sm" href="{% url 'tutor_create' %}?faculty={{ f.pk }}" title="Tyutor qo'shish"><i data-lucide="user-plus"></i></a>
+                {% if user.is_head %}<a class="btn btn-sm" href="{% url 'tutor_create' %}?faculty={{ f.pk }}" title="Tyutor qo'shish"><i data-lucide="user-plus"></i></a>{% endif %}
                 <a class="btn btn-sm" href="{% url 'faculty_edit' f.pk %}" title="Tahrirlash"><i data-lucide="pencil"></i></a>
                 <form method="post" action="{% url 'faculty_delete' f.pk %}" data-confirm="«{{ f.name }}» o'chirilsinmi?">{% csrf_token %}
                   <button class="btn btn-sm btn-danger" type="submit" title="O'chirish"><i data-lucide="trash-2"></i></button>
@@ -30,7 +31,7 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="5"><div class="empty"><i data-lucide="building-2"></i><div class="t">Hali fakultet qo'shilmagan</div><div class="small">O'ng tomondagi forma orqali qo'shing.</div></div></td></tr>
+          <tr><td colspan="6"><div class="empty"><i data-lucide="building-2"></i><div class="t">Hali fakultet qo'shilmagan</div><div class="small">O'ng tomondagi forma orqali qo'shing.</div></div></td></tr>
         {% endfor %}
         </tbody>
       </table>

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% load core_tags qalqon_tags %}
+{% block title %}Naryad {{ duty.number }}{% endblock %}
+{% block crumb %}Qalqon · Naryad{% endblock %}
+{% block head %}{% include "qalqon/_leaflet.html" %}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'qalqon:calendar' %}?y={{ duty.date.year }}&m={{ duty.date.month }}&date={{ duty.date|date:'Y-m-d' }}"><i data-lucide="arrow-left"></i> Kalendar</a>
+<div class="page-head">
+  <div>
+    <h1>{{ duty.building.name }}</h1>
+    <div class="sub flex flex-wrap">
+      <span class="badge qs-{{ status }}"><i data-lucide="{{ status|duty_icon }}"></i> {{ status|duty_label }}</span>
+      <span><i data-lucide="calendar" style="width:14px;height:14px;vertical-align:-2px"></i> {{ duty.date|uz_date_wd }}</span>
+      <span>· <b>{{ duty.start_time|time:'H:i' }}–{{ duty.end_time|time:'H:i' }}</b></span>
+      <span class="muted">· {{ duty.number }}</span>
+    </div>
+  </div>
+  {% if is_staff %}
+  <div class="right flex">
+    <a class="btn" href="{% url 'qalqon:duty_edit' duty.pk %}"><i data-lucide="pencil"></i> Tahrirlash</a>
+    <form method="post" action="{% url 'qalqon:duty_delete' duty.pk %}" data-confirm="Naryad o'chirilsinmi? A'zolarga xabar boradi.">{% csrf_token %}
+      <button class="btn btn-danger" type="submit"><i data-lucide="trash-2"></i></button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<div class="detail-grid">
+  <div>
+    {% if my_dm %}
+      {% include "qalqon/_my_action.html" with dm=my_dm %}
+    {% endif %}
+
+    {% if my_dm or is_staff %}
+    <div class="card">
+      <div class="card-head"><i data-lucide="siren" style="color:var(--red)"></i><h3>Qonunbuzarliklar</h3><span class="badge plain">{{ violations|length }}</span>
+        {% if my_dm and my_dm.can_add_violation %}<a class="btn btn-sm btn-primary right" href="{% url 'qalqon:violation_add' my_dm.pk %}"><i data-lucide="plus"></i> Qayd etish</a>{% endif %}
+      </div>
+      <div class="card-body" style="display:grid;gap:10px">
+        {% for v in violations %}
+          {% include "qalqon/_violation_card.html" with editable=my_dm.can_add_violation show_recorder=is_staff %}
+        {% empty %}
+          <div class="empty" style="padding:18px"><i data-lucide="shield-check"></i><div class="t">Qonunbuzarlik qayd etilmagan</div>
+            {% if my_dm and my_dm.status == 'scheduled' %}<div class="small">Naryad boshlangach, qonunbuzarliklarni shu yerda kiritasiz.</div>{% endif %}</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head"><i data-lucide="users-round"></i><h3>Navbatchi a'zolar</h3><span class="badge plain">{{ dms|length }}</span></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>A'zo</th><th>Holat</th><th>Boshladi</th><th>Yakunladi</th>{% if is_staff %}<th>Qonunbuzarlik</th><th>Rasm</th>{% endif %}</tr></thead>
+          <tbody>
+          {% for dm in dms %}
+            <tr>
+              <td><div class="person"><span class="avatar">{{ dm.member.initials }}</span><div>
+                <div class="n">{% if is_staff %}<a href="{% url 'qalqon:member_detail' dm.member_id %}" style="color:inherit">{{ dm.member.full_name }}</a>{% else %}{{ dm.member.full_name }}{% endif %}</div>
+                <div class="s">{{ dm.member.faculty.label|default:'' }}{% if dm.member.qalqon_profile.group_name %} · {{ dm.member.qalqon_profile.group_name }}{% endif %}{% if is_staff and dm.member.phone %} · {{ dm.member.phone }}{% endif %}</div></div></div></td>
+              <td><span class="badge qs-{{ dm.display_status }}"><i data-lucide="{{ dm.display_status|duty_icon }}"></i> {{ dm.display_status_label }}</span></td>
+              <td class="small nowrap">{% if dm.started_at %}{{ dm.started_at|time:'H:i' }}{% if dm.is_late_start %} <span style="color:var(--red-text)">kechikib</span>{% endif %}{% if is_staff %}<div class="text-muted">{{ dm.start_distance|meters }} · ±{{ dm.start_accuracy|floatformat:0 }} m</div>{% endif %}{% else %}—{% endif %}</td>
+              <td class="small nowrap">{% if dm.finished_at %}{{ dm.finished_at|time:'H:i' }}{% if is_staff %}<div class="text-muted">{{ dm.finish_distance|meters }} · ±{{ dm.finish_accuracy|floatformat:0 }} m</div>{% endif %}{% else %}—{% endif %}</td>
+              {% if is_staff %}
+                <td>{% if dm.v_count %}<span class="badge st-overdue">{{ dm.v_count }}</span>{% else %}<span class="text-muted">0</span>{% endif %}</td>
+                <td>{% if dm.photo %}<a href="{% url 'qalqon:duty_photo' dm.pk %}" target="_blank"><img src="{% url 'qalqon:duty_photo' dm.pk %}" alt="" style="width:54px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--border)"></a>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if is_staff and logs %}
+    <div class="card">
+      <div class="card-head"><i data-lucide="locate"></i><h3>Joylashuv tekshiruvlari</h3><span class="small muted right">oxirgi 50 ta</span></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Vaqt</th><th>A'zo</th><th>Amal</th><th>Masofa</th><th>Aniqlik</th><th>Natija</th></tr></thead>
+          <tbody>
+          {% for l in logs %}
+            <tr>
+              <td class="small nowrap">{{ l.created_at|uz_datetime }}</td>
+              <td class="small">{{ l.duty_member.member.full_name }}</td>
+              <td class="small">{{ l.get_action_display }}</td>
+              <td class="small">{{ l.distance|meters }}</td>
+              <td class="small">{% if l.accuracy %}±{{ l.accuracy|floatformat:0 }} m{% else %}—{% endif %}</td>
+              <td>{% if l.success %}<span class="badge st-approved">Mos</span>{% else %}<span class="badge st-overdue" title="{{ l.message }}">Rad etildi</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-body meta">
+        <div id="duty-map" class="map sm" data-map data-lat="{{ duty.latitude|stringformat:'s' }}" data-lng="{{ duty.longitude|stringformat:'s' }}" data-radius="{{ duty.radius_m }}"></div>
+        <div class="meta-row"><span class="ic"><i data-lucide="building"></i></span><div><div class="k">Bino</div><div class="v">{{ duty.building.name }}</div>{% if duty.building.address %}<div class="small muted">{{ duty.building.address }}</div>{% endif %}</div></div>
+        <div class="meta-row"><span class="ic"><i data-lucide="clock"></i></span><div><div class="k">Vaqti</div><div class="v">{{ duty.start_time|time:'H:i' }} – {{ duty.end_time|time:'H:i' }}</div></div></div>
+        <div class="meta-row"><span class="ic"><i data-lucide="locate-fixed"></i></span><div><div class="k">Koordinata va radius</div><div class="v coord">{{ duty.latitude|stringformat:"s" }}, {{ duty.longitude|stringformat:"s" }}</div><div class="small muted">Ruxsat etilgan radius: <b>{{ duty.radius_m }} m</b> · <a href="{{ duty.map_url }}" target="_blank" rel="noopener">Google xaritada</a></div></div></div>
+        {% if duty.note %}<div class="meta-row"><span class="ic"><i data-lucide="message-square-text"></i></span><div><div class="k">Ko'rsatma</div><div class="desc-text small">{{ duty.note }}</div></div></div>{% endif %}
+        <div class="meta-row"><span class="ic"><i data-lucide="user-check"></i></span><div><div class="k">Naryad qo'ygan</div><div class="v">{{ duty.created_by.full_name }}</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}{% include "qalqon/_scripts.html" %}{% endblock %}

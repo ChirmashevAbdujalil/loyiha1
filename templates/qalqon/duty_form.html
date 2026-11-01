@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}{% if duty %}Naryadni tahrirlash{% else %}Naryad qo'yish{% endif %}{% endblock %}
+{% block crumb %}Qalqon · Naryad qo'yish{% endblock %}
+{% block head %}{% include "qalqon/_leaflet.html" %}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% if duty %}{% url 'qalqon:duty_detail' duty.pk %}{% else %}{% url 'qalqon:calendar' %}{% endif %}"><i data-lucide="arrow-left"></i> Orqaga</a>
+<div class="page-head">
+  <div><h1>{% if duty %}Naryadni tahrirlash{% else %}Yangi naryad qo'yish{% endif %}</h1>
+  <div class="sub">Sana va vaqtni belgilang, binoni koordinatasi va ruxsat etilgan radiusi bilan kiriting, navbatchi a'zolarni tanlang.</div></div>
+</div>
+
+<form method="post" id="duty-form">{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger mb-3">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="detail-grid">
+    <div>
+      <div class="card">
+        <div class="card-head"><i data-lucide="calendar-clock"></i><h3>Sana va vaqt</h3></div>
+        <div class="card-body form-grid">
+          {% include "includes/field.html" with field=form.date %}
+          {% if form.date_to %}{% include "includes/field.html" with field=form.date_to %}{% else %}<div></div>{% endif %}
+          {% include "includes/field.html" with field=form.start_time %}
+          {% include "includes/field.html" with field=form.end_time %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><i data-lucide="users-round"></i><h3>Navbatchi a'zolar</h3><span class="badge primary right" id="sel-count">0 ta tanlandi</span></div>
+        <div class="card-body">
+          {% if form.members.errors %}<div class="alert alert-danger mb-2">{% for e in form.members.errors %}{{ e }}{% endfor %}</div>{% endif %}
+          {% if groups %}
+          <div class="picker">
+            <div class="picker-tools">
+              <div class="search"><i data-lucide="search"></i><input type="search" id="member-search" placeholder="Ism, guruh yoki yo'nalish"></div>
+              <select class="select-sm" id="faculty-filter">
+                <option value="">Barcha fakultetlar</option>
+                {% for f in faculties %}<option value="{{ f.pk }}">{{ f.name }}</option>{% endfor %}
+              </select>
+              <select class="select-sm" id="course-filter">
+                <option value="">Barcha kurslar</option>{% for i in "123456" %}<option value="{{ i }}">{{ i }}-kurs</option>{% endfor %}
+              </select>
+              <label class="check small"><input type="checkbox" id="hide-busy"> Bandlarni yashirish</label>
+              <button type="button" class="btn btn-sm" data-select-none><i data-lucide="x"></i> Tozalash</button>
+            </div>
+            <div class="picker-body">
+              {% for faculty, members in groups %}
+              <div class="picker-group" data-group data-faculty="{{ faculty.pk|default:'' }}">
+                <div class="picker-group-head"><i data-lucide="building-2" style="width:15px;height:15px"></i> {{ faculty.name|default:'Fakultetsiz' }}<span class="cnt">{{ members|length }} nafar</span></div>
+                <div class="picker-items">
+                  {% for u in members %}
+                  <label class="picker-item{% if u.checked %} on{% endif %}" data-id="{{ u.pk }}" data-course="{{ u.profile.course|default:'' }}"
+                         data-name="{{ u.full_name|lower }} {{ u.profile.group_name|lower }} {{ u.profile.direction|lower }}">
+                    <input type="checkbox" name="members" value="{{ u.pk }}" {% if u.checked %}checked{% endif %} data-label="{{ u.short_name }}">
+                    <span class="avatar sm">{{ u.initials }}</span>
+                    <div class="grow">
+                      <div class="n">{{ u.full_name }}{% if u.role == 'qalqon_leader' %} <span class="badge primary" style="height:18px;font-size:10px">sardor</span>{% endif %} <span class="badge st-submitted busy-badge hidden" style="height:18px;font-size:10px">band</span></div>
+                      <div class="s">{% if u.profile.course %}{{ u.profile.course }}-kurs · {% endif %}{{ u.profile.group_name|default:'' }}{% if u.profile.direction %} · {{ u.profile.direction }}{% endif %}{% if u.phone %} · {{ u.phone }}{% endif %}</div>
+                    </div>
+                  </label>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="selected-bar" id="selected-bar"></div>
+          {% else %}
+            <div class="empty"><i data-lucide="users-round"></i><div class="t">Qalqon a'zolari hali qo'shilmagan</div><a class="btn btn-sm mt-2" href="{% url 'qalqon:member_create' %}"><i data-lucide="user-plus"></i> A'zo qo'shish</a></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-head"><i data-lucide="map-pin"></i><h3>Joy va hudud</h3></div>
+        <div class="card-body" style="display:grid;gap:14px">
+          {% include "includes/field.html" with field=form.building %}
+          <div id="pick-map" class="map sm" data-map data-pick="1" data-lat-input="id_latitude" data-lng-input="id_longitude" data-radius-input="id_radius_m"
+               data-lat="{{ form.latitude.value|default_if_none:''|stringformat:'s' }}" data-lng="{{ form.longitude.value|default_if_none:''|stringformat:'s' }}" data-radius="{{ form.radius_m.value|default:100 }}"></div>
+          <div class="small muted" style="margin-top:-6px">Xaritani bosib aniq nuqtani belgilashingiz mumkin.</div>
+          <div class="form-grid">
+            {% include "includes/field.html" with field=form.latitude %}
+            {% include "includes/field.html" with field=form.longitude %}
+          </div>
+          <button type="button" class="btn btn-sm" data-use-my-location data-lat-input="id_latitude" data-lng-input="id_longitude" data-map="pick-map"><i data-lucide="locate-fixed"></i> Hozirgi joylashuvimni olish</button>
+          {% include "includes/field.html" with field=form.radius_m %}
+          {% include "includes/field.html" with field=form.note %}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body" style="display:grid;gap:10px">
+          <button class="btn btn-primary btn-lg btn-block" type="submit"><i data-lucide="shield-plus"></i> {% if duty %}Saqlash{% else %}Naryad qo'yish{% endif %}</button>
+          <a class="btn btn-block" href="{% url 'qalqon:calendar' %}">Bekor qilish</a>
+          <div class="small muted" style="text-align:center"><i data-lucide="bell-ring" style="width:13px;height:13px;vertical-align:-2px"></i> Tanlangan a'zolarga bildirishnoma boradi</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+{{ buildings_json|json_script:"buildings-data" }}
+{% endblock %}
+
+{% block scripts %}
+{% include "qalqon/_scripts.html" %}
+<script>
+(function () {
+  var buildings = JSON.parse(document.getElementById("buildings-data").textContent);
+  var sel = document.getElementById("id_building");
+  var lat = document.getElementById("id_latitude"), lng = document.getElementById("id_longitude"), rad = document.getElementById("id_radius_m");
+  sel.addEventListener("change", function () {
+    var b = buildings.filter(function (x) { return String(x.id) === sel.value; })[0];
+    if (!b) return;
+    lat.value = b.lat.toFixed(6); lng.value = b.lng.toFixed(6); rad.value = b.radius;
+    var m = window.Qalqon.maps["pick-map"]; if (m && m.sync) m.sync();
+  });
+
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[name="members"]'));
+  var count = document.getElementById("sel-count"), bar = document.getElementById("selected-bar");
+  var busy = {};
+  function refresh() {
+    var on = boxes.filter(function (b) { return b.checked; });
+    if (count) count.textContent = on.length + " ta tanlandi";
+    if (bar) {
+      bar.innerHTML = "";
+      on.forEach(function (b) { var s = document.createElement("span"); s.className = "badge"; s.textContent = b.dataset.label; bar.appendChild(s); });
+    }
+    boxes.forEach(function (b) { b.closest(".picker-item").classList.toggle("on", b.checked); });
+  }
+  boxes.forEach(function (b) { b.addEventListener("change", refresh); });
+  var none = document.querySelector("[data-select-none]");
+  if (none) none.addEventListener("click", function () { boxes.forEach(function (b) { b.checked = false; }); refresh(); });
+
+  var q = document.getElementById("member-search"), fac = document.getElementById("faculty-filter"),
+      course = document.getElementById("course-filter"), hideBusy = document.getElementById("hide-busy");
+  function filter() {
+    if (!q) return;
+    var text = q.value.trim().toLowerCase();
+    document.querySelectorAll("[data-group]").forEach(function (g) {
+      var facOk = !fac.value || g.dataset.faculty === fac.value, any = false;
+      g.querySelectorAll(".picker-item").forEach(function (it) {
+        var show = facOk && (!text || it.dataset.name.indexOf(text) !== -1) &&
+          (!course.value || it.dataset.course === course.value) && !(hideBusy.checked && busy[it.dataset.id]);
+        it.style.display = show ? "" : "none";
+        any = any || show;
+      });
+      g.style.display = any ? "" : "none";
+    });
+  }
+  [q, fac, course, hideBusy].forEach(function (el) { if (el) el.addEventListener(el.tagName === "INPUT" && el.type === "search" ? "input" : "change", filter); });
+
+  var dateInput = document.getElementById("id_date");
+  function loadBusy() {
+    if (!dateInput.value) return;
+    fetch("{% url 'qalqon:busy_members' %}?date=" + dateInput.value + "{% if duty %}&exclude={{ duty.pk }}{% endif %}", { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        busy = {};
+        data.busy.forEach(function (id) { busy[id] = true; });
+        document.querySelectorAll(".picker-item").forEach(function (it) {
+          it.querySelector(".busy-badge").classList.toggle("hidden", !busy[it.dataset.id]);
+        });
+        filter();
+      });
+  }
+  dateInput.addEventListener("change", loadBusy);
+  loadBusy();
+  refresh();
+})();
+</script>
+{% endblock %}

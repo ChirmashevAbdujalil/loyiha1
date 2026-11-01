@@ -6,14 +6,14 @@ from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from ..decorators import head_required
+from ..decorators import faculty_manager_required, head_required
 from ..forms import FacultyForm, TutorForm
 from ..models import Assignment, Faculty, User
 
 
 # ------------------------------------------------------------- fakultetlar
 
-@head_required
+@faculty_manager_required
 def faculty_list(request):
     form = FacultyForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -21,12 +21,14 @@ def faculty_list(request):
         messages.success(request, f"«{faculty.name}» qo'shildi.")
         return redirect("faculty_list")
     faculties = Faculty.objects.annotate(
-        tutor_count=Count("tutors", filter=Q(tutors__role=User.Role.TUTOR, tutors__is_active=True))
+        tutor_count=Count("tutors", filter=Q(tutors__role=User.Role.TUTOR, tutors__is_active=True)),
+        qalqon_count=Count("tutors", filter=Q(tutors__role__in=[
+            User.Role.QALQON_MEMBER, User.Role.QALQON_LEADER, User.Role.QALQON_ADMIN], tutors__is_active=True)),
     )
     return render(request, "faculties/list.html", {"faculties": faculties, "form": form})
 
 
-@head_required
+@faculty_manager_required
 def faculty_edit(request, pk):
     faculty = get_object_or_404(Faculty, pk=pk)
     form = FacultyForm(request.POST or None, instance=faculty)
@@ -37,12 +39,13 @@ def faculty_edit(request, pk):
     return render(request, "faculties/edit.html", {"form": form, "faculty": faculty})
 
 
-@head_required
+@faculty_manager_required
 @require_POST
 def faculty_delete(request, pk):
     faculty = get_object_or_404(Faculty, pk=pk)
-    if faculty.tutors.exists():
-        messages.error(request, "Bu fakultetga tyutorlar biriktirilgan. Avval ularni boshqa fakultetga o'tkazing.")
+    if faculty.tutors.exists() or faculty.qalqon_violations.exists():
+        messages.error(request, "Bu fakultetga foydalanuvchilar yoki qonunbuzarlik yozuvlari biriktirilgan — "
+                                "uni o'chirib bo'lmaydi.")
     else:
         faculty.delete()
         messages.success(request, f"«{faculty.name}» o'chirildi.")

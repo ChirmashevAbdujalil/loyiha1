@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
-from django.urls import path
+from django.urls import include, path
 
 from core import views
 
@@ -43,5 +43,6 @@ urlpatterns = [
     path("notifications/read-all/", views.notification_read_all, name="notification_read_all"),
     path("notifications/<int:pk>/", views.notification_open, name="notification_open"),
 
+    path("qalqon/", include("qalqon.urls")),
     path("admin/", admin.site.urls),
 ]

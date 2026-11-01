@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% load core_tags qalqon_tags %}
+{% block title %}Qalqon statistikasi{% endblock %}
+{% block crumb %}Qalqon · Statistika{% endblock %}
+{% block content %}
+<div class="page-head no-print">
+  <div><h1>Qalqon statistikasi</h1><div class="sub">Avtomatik shakllanadi · {{ generated_at|uz_datetime }} holatiga</div></div>
+  <div class="right flex">
+    <button class="btn" type="button" onclick="window.print()"><i data-lucide="printer"></i> Chop etish / PDF</button>
+    <a class="btn btn-success" href="{% url 'qalqon:stats_export' %}?{{ query }}"><i data-lucide="file-spreadsheet"></i> Excel hisobot</a>
+  </div>
+</div>
+
+<form class="card card-body mb-3 flex flex-wrap no-print" method="get" style="gap:10px;align-items:end">
+  <div class="field"><label>Dan</label><input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}"></div>
+  <div class="field"><label>Gacha</label><input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}"></div>
+  <div class="field"><label>Bino / TTJ</label><select name="building"><option value="">Barchasi</option>{% for b in buildings %}<option value="{{ b.pk }}" {% if b.pk == building_id %}selected{% endif %}>{{ b.name }}</option>{% endfor %}</select></div>
+  <div class="field"><label>Fakultet</label><select name="faculty"><option value="">Barchasi</option>{% for f in faculties %}<option value="{{ f.pk }}" {% if f.pk == faculty_id %}selected{% endif %}>{{ f.name }}</option>{% endfor %}</select></div>
+  <button class="btn btn-primary" type="submit"><i data-lucide="refresh-cw"></i> Yangilash</button>
+</form>
+
+<div class="report-title"><h2>Qalqon jamoatchilik guruhi faoliyati</h2><div class="muted mt-1">{{ date_from|uz_date }} — {{ date_to|uz_date }}</div></div>
+
+<div class="stats">
+  <div class="stat st-total"><span class="ic"><i data-lucide="shield"></i></span><div><div class="v">{{ duties_total }}</div><div class="l">Naryadlar ({{ assignments_total }} navbatchilik)</div></div></div>
+  <div class="stat qs-finished"><span class="ic"><i data-lucide="check-circle-2"></i></span><div><div class="v">{{ status_counts|get:'finished' }}</div><div class="l">Yakunlangan navbatchilik</div></div></div>
+  <div class="stat qs-missed"><span class="ic"><i data-lucide="x-circle"></i></span><div><div class="v">{{ status_counts|get:'missed'|add:status_counts.unfinished }}</div><div class="l">Chiqmagan / yakunlamagan</div></div></div>
+  <div class="stat st-overdue"><span class="ic"><i data-lucide="siren"></i></span><div><div class="v">{{ violations_total }}</div><div class="l">Qonunbuzarliklar ({{ students_total }} talaba)</div></div></div>
+  <div class="stat qs-today"><span class="ic"><i data-lucide="gauge"></i></span><div><div class="v">{% if discipline_rate is not None %}{{ discipline_rate }}%{% else %}—{% endif %}</div><div class="l">Naryad intizomi · kechikish: {{ late_starts }}</div></div></div>
+</div>
+
+<div class="stat-grid mb-3">
+  <div class="card">
+    <div class="card-head"><i data-lucide="building"></i><h3>Qaysi bino / TTJda qonunbuzarlik ko'p</h3></div>
+    <div class="card-body bars">
+      {% for r in by_place %}
+        <div class="bar-row"><span class="lb" title="{{ r.label }}">{{ r.label }}</span><div class="bar-track"><div class="bar-fill" style="width:{{ r.pct }}%"></div></div><span class="n">{{ r.count }} <small>{{ r.share }}%</small></span></div>
+      {% empty %}<div class="empty" style="padding:16px"><i data-lucide="shield-check"></i><div>Qonunbuzarlik yo'q</div></div>{% endfor %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><i data-lucide="award"></i><h3>TTJlar intizom reytingi</h3><span class="small muted right">kam qonunbuzarlik — yuqorida</span></div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>O'rin</th><th>TTJ</th><th>Qonunbuzarlik</th><th>Naryadlar</th><th>Naryadga nisbatan</th></tr></thead>
+        <tbody>
+        {% for r in dorm_rows %}
+          <tr>
+            <td><span class="rank {{ r.level }}">{{ r.rank }}</span></td>
+            <td><b>{{ r.building.name }}</b>{% if r.level == 'good' %} <span class="badge st-approved" style="height:20px"><i data-lucide="award"></i> intizomli</span>{% elif r.level == 'bad' %} <span class="badge st-overdue" style="height:20px">e'tibor talab</span>{% endif %}</td>
+            <td>{{ r.violations }}</td>
+            <td>{{ r.duties }}</td>
+            <td>{% if r.per_duty is not None %}{{ r.per_duty }}{% else %}—{% endif %}</td>
+          </tr>
+        {% empty %}<tr><td colspan="5"><div class="empty" style="padding:16px">TTJlar qo'shilmagan</div></td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><i data-lucide="list"></i><h3>Qonunbuzarlik turlari</h3></div>
+    <div class="card-body bars">
+      {% for r in by_category %}
+        <div class="bar-row"><span class="lb" title="{{ r.label }}">{{ r.label }}</span><div class="bar-track"><div class="bar-fill amber" style="width:{{ r.pct }}%"></div></div><span class="n">{{ r.count }} <small>{{ r.share }}%</small></span></div>
+      {% empty %}<div class="empty" style="padding:16px">Ma'lumot yo'q</div>{% endfor %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><i data-lucide="building-2"></i><h3>Fakultetlar kesimida</h3></div>
+    <div class="card-body bars">
+      {% for r in by_faculty %}
+        <div class="bar-row"><span class="lb" title="{{ r.label }}">{{ r.label }}</span><div class="bar-track"><div class="bar-fill blue" style="width:{{ r.pct }}%"></div></div><span class="n">{{ r.count }} <small>{{ r.share }}%</small></span></div>
+      {% empty %}<div class="empty" style="padding:16px">Ma'lumot yo'q</div>{% endfor %}
+      {% if by_course %}
+        <div class="label mt-3">Kurslar kesimida</div>
+        {% for r in by_course %}
+          <div class="bar-row"><span class="lb">{{ r.label }}</span><div class="bar-track"><div class="bar-fill blue" style="width:{{ r.pct }}%"></div></div><span class="n">{{ r.count }} <small>{{ r.share }}%</small></span></div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+
+  {% if trend %}
+  <div class="card">
+    <div class="card-head"><i data-lucide="trending-up"></i><h3>Kunlar bo'yicha dinamika</h3></div>
+    <div class="card-body">
+      <div class="trend">{% for t in trend %}<div class="col{% if not t.count %} zero{% endif %}" style="height:{% if t.count %}{{ t.pct }}{% else %}2{% endif %}%" title="{{ t.date|uz_date }}: {{ t.count }} ta"></div>{% endfor %}</div>
+      <div class="trend-axis"><span>{{ date_from|short_date }}</span><span>{{ date_to|short_date }}</span></div>
+    </div>
+  </div>
+  {% endif %}
+  <div class="card">
+    <div class="card-head"><i data-lucide="clock"></i><h3>Soatlar bo'yicha</h3></div>
+    <div class="card-body bars">
+      {% for h in hours %}
+        <div class="bar-row"><span class="lb">{{ h.label }}</span><div class="bar-track"><div class="bar-fill amber" style="width:{{ h.pct }}%"></div></div><span class="n">{{ h.count }}</span></div>
+      {% empty %}<div class="empty" style="padding:16px">Ma'lumot yo'q</div>{% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><i data-lucide="user-search"></i><h3>Kimning naryadida qanday qonunbuzarliklar qayd etilgan</h3></div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>A'zo</th><th>Jami</th><th>Turlari</th></tr></thead>
+      <tbody>
+      {% for r in recorder_rows %}
+        <tr>
+          <td><a class="person" href="{% url 'qalqon:member_detail' r.member.pk %}"><span class="avatar sm">{{ r.member.initials }}</span><span class="n">{{ r.member.full_name }}</span></a></td>
+          <td><span class="badge st-overdue">{{ r.total }}</span></td>
+          <td><div class="mini-stats">{% for label, c in r.categories %}<span class="badge plain">{{ label }}: {{ c }}</span>{% endfor %}</div></td>
+        </tr>
+      {% empty %}<tr><td colspan="3"><div class="empty" style="padding:16px">Ma'lumot yo'q</div></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><i data-lucide="users-round"></i><h3>A'zolarning naryad intizomi</h3></div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>A'zo</th><th>Fakultet</th><th>Naryadlar</th><th>Yakunladi</th><th>Chiqmadi</th><th>Yakunlamadi</th><th>Kechikdi</th><th>Qonunbuzarlik qayd etdi</th><th style="min-width:150px">Intizom</th></tr></thead>
+      <tbody>
+      {% for r in member_rows %}
+        <tr>
+          <td><a class="person" href="{% url 'qalqon:member_detail' r.member.pk %}"><span class="avatar sm">{{ r.member.initials }}</span><span class="n">{{ r.member.full_name }}</span></a></td>
+          <td class="small">{{ r.member.faculty.label|default:'—' }}</td>
+          <td>{{ r.total }}</td>
+          <td><span class="badge qs-finished">{{ r.finished }}</span></td>
+          <td>{% if r.missed %}<span class="badge qs-missed">{{ r.missed }}</span>{% else %}0{% endif %}</td>
+          <td>{% if r.unfinished %}<span class="badge qs-unfinished">{{ r.unfinished }}</span>{% else %}0{% endif %}</td>
+          <td>{{ r.late }}</td>
+          <td>{{ r.violations }}</td>
+          <td>{% if r.rate is not None %}<div class="flex"><div class="progress grow"><span style="width:{{ r.rate }}%;{% if r.rate < 50 %}background:var(--red){% elif r.rate < 80 %}background:#f59e0b{% endif %}"></span></div><span class="progress-label">{{ r.rate }}%</span></div>{% else %}<span class="text-muted small">hali o'tmagan</span>{% endif %}</td>
+        </tr>
+      {% empty %}<tr><td colspan="9"><div class="empty" style="padding:16px">Ma'lumot yo'q</div></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="stat-grid mt-3">
+  <div class="card">
+    <div class="card-head"><i data-lucide="repeat"></i><h3>Takroriy qonunbuzarlar</h3><span class="badge st-overdue right">{{ repeat_offenders|length }}</span></div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Talaba</th><th>Fakultet, guruh</th><th>Soni</th><th>Turlari</th></tr></thead>
+        <tbody>
+        {% for r in repeat_offenders %}
+          <tr><td><b>{{ r.name }}</b></td><td class="small">{{ r.faculty.label }} · {{ r.group }} · {{ r.course }}-kurs</td><td><span class="badge st-overdue">{{ r.count }}</span></td><td class="small">{{ r.categories }}</td></tr>
+        {% empty %}<tr><td colspan="4"><div class="empty" style="padding:16px">Takroriy holat yo'q</div></td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><i data-lucide="graduation-cap"></i><h3>Tyutorlar kesimida (talabalari)</h3></div>
+    <div class="card-body bars">
+      {% for r in by_tutor %}
+        <div class="bar-row"><span class="lb" title="{{ r.label }}">{{ r.label }}</span><div class="bar-track"><div class="bar-fill blue" style="width:{{ r.pct }}%"></div></div><span class="n">{{ r.count }}</span></div>
+      {% empty %}<div class="empty" style="padding:16px">Ma'lumot yo'q</div>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% load core_tags qalqon_tags %}
+{% block title %}Qalqon — naryadlar kalendari{% endblock %}
+{% block crumb %}Qalqon · Naryadlar kalendari{% endblock %}
+{% block content %}
+
+{% if my_today %}
+  {% with dm=my_today %}
+  <a class="close-cta mb-3 qs-{{ dm.display_status }}" href="{% url 'qalqon:duty_detail' dm.duty_id %}" style="color:inherit;border-color:var(--c);background:var(--bg-c)">
+    <span class="ic" style="background:#fff;color:var(--c)"><i data-lucide="{{ dm.display_status|duty_icon }}"></i></span>
+    <div class="grow">
+      <b>Bugun naryadingiz bor: {{ dm.duty.start_time|time:'H:i' }}–{{ dm.duty.end_time|time:'H:i' }}, {{ dm.duty.building.name }}</b>
+      <div class="small">{{ dm.display_status_label }}{% if dm.status == 'scheduled' %} — joyiga yetib borgach «Naryadni boshlash» tugmasini bosing{% endif %}</div>
+    </div>
+    <span class="btn btn-primary">Naryadga o'tish <i data-lucide="chevron-right"></i></span>
+  </a>
+  {% endwith %}
+{% endif %}
+
+<div class="stats">
+  <div class="stat st-total"><span class="ic"><i data-lucide="shield"></i></span><div><div class="v">{{ month_duties }}</div><div class="l">Shu oydagi naryadlar</div></div></div>
+  <div class="stat qs-finished"><span class="ic"><i data-lucide="check-circle-2"></i></span><div><div class="v">{{ month_counts|get:'finished' }}</div><div class="l">Yakunlangan</div></div></div>
+  <div class="stat qs-active"><span class="ic"><i data-lucide="radio"></i></span><div><div class="v">{{ month_counts|get:'active' }}</div><div class="l">Hozir naryadda</div></div></div>
+  <div class="stat qs-missed"><span class="ic"><i data-lucide="x-circle"></i></span><div><div class="v">{{ month_counts|get:'missed'|add:0 }}{% if month_counts.unfinished %}<span class="small muted"> +{{ month_counts.unfinished }}</span>{% endif %}</div><div class="l">Chiqmagan / yakunlamagan</div></div></div>
+  <div class="stat qs-scheduled"><span class="ic"><i data-lucide="calendar-clock"></i></span><div><div class="v">{{ month_counts|get:'scheduled'|add:month_counts.today }}</div><div class="l">Rejalashtirilgan</div></div></div>
+</div>
+
+<div class="cal-layout" id="cal-layout">
+  <section>
+    <div class="cal-head">
+      <a class="cal-nav" href="{% qs y=prev.y m=prev.m date='' %}" title="Oldingi oy"><i data-lucide="chevron-left"></i></a>
+      <h1>{{ title }}</h1>
+      <a class="cal-nav" href="{% qs y=next.y m=next.m date='' %}" title="Keyingi oy"><i data-lucide="chevron-right"></i></a>
+      <span class="cal-total" title="Shu oydagi naryadlar">{{ month_duties }}</span>
+      <div class="right flex">
+        <a class="btn" href="{% qs y='' m='' date='' %}">Bugun</a>
+        {% if user.is_qalqon_staff %}<a class="btn btn-primary" href="{% url 'qalqon:duty_create' %}?date={{ selected|date:'Y-m-d' }}"><i data-lucide="shield-plus"></i> Naryad qo'yish</a>{% endif %}
+        <button class="btn btn-icon" type="button" id="panel-toggle" title="Kun panelini yashirish / ko'rsatish"><i data-lucide="panel-right"></i></button>
+      </div>
+    </div>
+
+    <div class="cal-toolbar">
+      <div class="legend">
+        <span><span class="dot-ic qs-scheduled"><i data-lucide="calendar-clock"></i></span> Rejada</span>
+        <span><span class="dot-ic qs-today"><i data-lucide="map-pin"></i></span> Bugun</span>
+        <span><span class="dot-ic qs-active"><i data-lucide="radio"></i></span> Naryadda</span>
+        <span><span class="dot-ic qs-finished"><i data-lucide="check"></i></span> Yakunlangan</span>
+        <span><span class="dot-ic qs-missed"><i data-lucide="x"></i></span> Chiqmagan</span>
+      </div>
+      <div class="right flex">
+        <div class="segmented">
+          <a href="{% qs mine='' %}" class="{% if not mine %}on{% endif %}">Barcha naryadlar</a>
+          <a href="{% qs mine='1' %}" class="{% if mine %}on{% endif %}">Faqat meniki</a>
+        </div>
+        <form method="get">
+          {% for k, v in request.GET.items %}{% if k != 'building' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+          <select class="select-sm" name="building" onchange="this.form.submit()">
+            <option value="">Barcha binolar</option>
+            {% for b in buildings %}<option value="{{ b.pk }}" {% if b.pk == building_id %}selected{% endif %}>{{ b.name }}</option>{% endfor %}
+          </select>
+        </form>
+      </div>
+    </div>
+    {% if selected_member %}
+      <div class="filter-pill mb-3"><i data-lucide="user"></i> {{ selected_member.full_name }} naryadlari
+        <a class="btn btn-sm right" href="{% qs member='' %}"><i data-lucide="x"></i> Filtrni olib tashlash</a></div>
+    {% endif %}
+
+    <table class="calendar">
+      <thead><tr>{% for w, ws in weekdays %}<th><span class="wd-full">{{ w }}</span><span class="wd-short">{{ ws }}</span></th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for week in weeks %}
+        <tr>
+        {% for c in week %}
+          <td>
+            <div class="day{% if not c.in_month %} out{% endif %}{% if c.is_today %} today{% endif %}{% if c.is_selected %} selected{% endif %}{% if c.is_weekend %} weekend{% endif %}">
+              <a class="day-link" href="{% qs y=c.date.year m=c.date.month date=c.date|date:'Y-m-d' %}" aria-label="{{ c.date|uz_date }}"></a>
+              <div class="num-row">
+                <span class="num">{{ c.date.day }}</span>
+                {% if user.is_qalqon_staff %}<a class="add" style="position:relative;z-index:1" href="{% url 'qalqon:duty_create' %}?date={{ c.date|date:'Y-m-d' }}" title="Shu kunga naryad"><i data-lucide="plus"></i></a>{% endif %}
+              </div>
+              {% for d in c.duties %}
+                <a class="duty-chip qs-{{ d.status }}{% if d.is_mine %} mine{% endif %}" href="{% url 'qalqon:duty_detail' d.pk %}" title="{{ d.building.name }}, {{ d.start_time|time:'H:i' }}–{{ d.end_time|time:'H:i' }}: {% for dm in d.dms %}{{ dm.member.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                  <div class="h"><span>{{ d.start_time|time:'H:i' }}</span><span class="b">{{ d.building.label }}</span></div>
+                  <div class="nm">{% for dm in d.dms %}{{ dm.member.short_name }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+                </a>
+              {% endfor %}
+              {% if c.more %}<a class="more-link" href="{% qs y=c.date.year m=c.date.month date=c.date|date:'Y-m-d' %}">yana +{{ c.more }}</a>{% endif %}
+            </div>
+          </td>
+        {% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <aside class="card panel">
+    <div class="panel-head">
+      <div class="panel-date">
+        <span class="ic"><i data-lucide="shield"></i></span>
+        <div class="grow">
+          <h3>{{ selected|uz_date_wd }}</h3>
+          <div class="flex mt-1">
+            {% if selected == today %}<span class="badge primary">Bugun</span>{% endif %}
+            <span class="badge plain">{{ day_duties|length }} ta naryad</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-list">
+      {% for d in day_duties %}
+        <div class="duty-card qs-{{ d.status }}" style="border-left:3px solid var(--c)">
+          <div class="row1">
+            <span class="badge qs-{{ d.status }}"><i data-lucide="{{ d.status|duty_icon }}"></i> {{ d.status|duty_label }}</span>
+            <span class="small muted right"><i data-lucide="clock" style="width:13px;height:13px;vertical-align:-2px"></i> {{ d.start_time|time:'H:i' }}–{{ d.end_time|time:'H:i' }}</span>
+          </div>
+          <a class="bld mt-2" style="display:block;color:var(--text)" href="{% url 'qalqon:duty_detail' d.pk %}">{{ d.building.name }}</a>
+          <div class="small muted"><i data-lucide="locate-fixed" style="width:12px;height:12px;vertical-align:-2px"></i> radius {{ d.radius_m }} m · <a href="{{ d.map_url }}" target="_blank" rel="noopener">xaritada</a></div>
+          <div class="mt-2">
+            {% for dm in d.dms %}
+              <div class="member-line">
+                <span class="avatar sm">{{ dm.member.initials }}</span>
+                <a class="grow" href="{% qs member=dm.member_id %}" style="color:var(--text);font-weight:600" title="Shu a'zoning naryadlarini ko'rsatish">{{ dm.member.full_name }}</a>
+                <span class="badge qs-{{ dm.display_status }}" style="height:20px;font-size:11px">{{ dm.display_status_label }}</span>
+              </div>
+            {% endfor %}
+          </div>
+          <a class="btn btn-sm btn-block mt-2" href="{% url 'qalqon:duty_detail' d.pk %}">{% if d.is_mine %}Mening naryadim{% else %}Batafsil{% endif %} <i data-lucide="chevron-right"></i></a>
+        </div>
+      {% empty %}
+        <div class="empty">
+          <i data-lucide="calendar-x-2"></i>
+          <div class="t">Bu kunda naryad yo'q</div>
+          {% if user.is_qalqon_staff %}<a class="btn btn-sm mt-3" href="{% url 'qalqon:duty_create' %}?date={{ selected|date:'Y-m-d' }}"><i data-lucide="shield-plus"></i> Naryad qo'yish</a>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var layout = document.getElementById("cal-layout");
+  var key = "qalqon.panelCollapsed";
+  try { if (localStorage.getItem(key) === "1") layout.classList.add("panel-collapsed"); } catch (e) {}
+  document.getElementById("panel-toggle").addEventListener("click", function () {
+    layout.classList.toggle("panel-collapsed");
+    try { localStorage.setItem(key, layout.classList.contains("panel-collapsed") ? "1" : "0"); } catch (e) {}
+  });
+})();
+</script>
+{% endblock %}

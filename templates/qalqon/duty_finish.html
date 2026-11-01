@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load core_tags qalqon_tags %}
+{% block title %}Naryadni yakunlash{% endblock %}
+{% block crumb %}Qalqon · Naryadni yakunlash{% endblock %}
+{% block head %}{% include "qalqon/_leaflet.html" %}{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'qalqon:duty_detail' duty.pk %}"><i data-lucide="arrow-left"></i> Naryad</a>
+<div class="page-head">
+  <div><h1>Naryadni yakunlash</h1>
+    <div class="sub">{{ duty.building.name }} · {{ duty.date|uz_date }} · {{ duty.start_time|time:'H:i' }}–{{ duty.end_time|time:'H:i' }}</div></div>
+</div>
+
+<form method="post" enctype="multipart/form-data" data-geo data-lat="{{ duty.latitude|stringformat:'s' }}" data-lng="{{ duty.longitude|stringformat:'s' }}"
+      data-radius="{{ duty.radius_m }}" data-max-accuracy="{{ max_accuracy }}" data-map="duty-map">{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger mb-3"><i data-lucide="alert-octagon"></i> {% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+  <div class="detail-grid">
+    <div>
+      <div class="card">
+        <div class="card-head"><span class="badge plain">1</span><h3>Qonunbuzarliklarni qayta tekshiring</h3><span class="badge st-overdue right">{{ violations|length }} ta</span></div>
+        <div class="card-body" style="display:grid;gap:10px">
+          {% for v in violations %}
+            {% include "qalqon/_violation_card.html" with editable=dm.can_add_violation %}
+          {% empty %}
+            <div class="empty" style="padding:14px"><i data-lucide="shield-check"></i><div class="t">Naryad davomida qonunbuzarlik qayd etilmagan</div></div>
+          {% endfor %}
+          {% if dm.can_add_violation %}<a class="btn btn-sm" href="{% url 'qalqon:violation_add' dm.pk %}" style="justify-self:start"><i data-lucide="plus"></i> Yana qonunbuzarlik qo'shish</a>{% endif %}
+          <label class="check mt-2" style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)">
+            {{ form.confirm }} <span><b>{{ form.confirm.label }}</b>{% if not violations %} (qonunbuzarlik bo'lmaganini tasdiqlayman){% endif %}</span>
+          </label>
+          {% for e in form.confirm.errors %}<div class="error" style="color:var(--red-text)">{{ e }}</div>{% endfor %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="badge plain">2</span><h3>Sherigingiz bilan tushgan rasm</h3></div>
+        <div class="card-body">
+          <label class="dropzone" data-list="photo-preview">
+            <i data-lucide="camera"></i>
+            <div class="t">Rasmga oling yoki galereyadan tanlang</div>
+            <div class="small muted">Naryad tugaganidan keyin, bino oldida sherigingiz bilan</div>
+            <input type="file" name="photo" accept="image/*" capture="environment" required>
+          </label>
+          {% for e in form.photo.errors %}<div class="error" style="color:var(--red-text)">{{ e }}</div>{% endfor %}
+          <div class="file-list" id="photo-preview"></div>
+          <img id="photo-img" alt="" style="display:none;max-width:100%;max-height:280px;border-radius:12px;margin-top:10px">
+          <div class="field mt-3">{{ form.finish_note.label_tag }}{{ form.finish_note }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-body" style="display:grid;gap:12px">
+          <div class="card-head" style="padding:0;border:0"><span class="badge plain">3</span><h3>Joylashuv tekshiruvi</h3></div>
+          <div id="duty-map" class="map sm" data-map data-lat="{{ duty.latitude|stringformat:'s' }}" data-lng="{{ duty.longitude|stringformat:'s' }}" data-radius="{{ duty.radius_m }}"></div>
+          <div class="small muted">Naryad faqat bino hududida ({{ duty.radius_m }} m radius) turganingizda yakunlanadi.</div>
+          <input type="hidden" name="latitude"><input type="hidden" name="longitude"><input type="hidden" name="accuracy">
+          <button class="btn btn-success btn-xl" type="submit" data-geo-submit><i data-lucide="flag"></i> Naryadni yakunlash</button>
+          <div class="geo-status"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+{% include "qalqon/_scripts.html" %}
+<script>
+(function () {
+  var input = document.querySelector('input[name="photo"]');
+  var img = document.getElementById("photo-img");
+  input.addEventListener("change", function () {
+    var f = input.files && input.files[0];
+    if (f && f.type.indexOf("image/") === 0) { img.src = URL.createObjectURL(f); img.style.display = "block"; }
+  });
+})();
+</script>
+{% endblock %}

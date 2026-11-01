@@ -39,6 +39,59 @@ Barcha jarayon kalendarda ko'rinadi va istalgan sana-soat holatiga rangli hisobo
 muddat eslatmasi. Sarlavhadagi qo'ng'iroqcha har 30 soniyada yangilanadi, yangi
 bildirishnoma kelganda ekranda xabar (toast) va brauzer bildirishnomasi chiqadi.
 
+## Qalqon jamoatchilik guruhi moduli (`/qalqon/`)
+
+Uchta rol: **umumiy admin** (bo'lim boshlig'i ham admin huquqiga ega), **sardor** va **a'zo**.
+
+- **A'zolar** fakultetlar kesimida (filtr: fakultet, kurs, rol, qidiruv), ma'lumotlari bilan:
+  yo'nalish, guruh, kurs, telefon, TTJ va xona. Qo'lda qo'shish yoki **Excel'dan import**
+  (login va parollar avtomatik yaratiladi va Excel ko'rinishida yuklab olinadi).
+- **Binolar / TTJlar** — koordinata (xaritadan bosib, qo'lda yoki "hozirgi joylashuvim")
+  va ruxsat etilgan radius (metr).
+- **Naryad qo'yish** (sardor/admin): sana (yoki sanalar oralig'i — har kunga alohida naryad),
+  boshlanish/tugash vaqti, bino, koordinata, radius, ko'rsatma va navbatchi a'zolar
+  (fakultet, kurs bo'yicha filtr; o'sha kuni boshqa naryadda bo'lganlar "band" deb belgilanadi).
+  A'zolarga bildirishnoma boradi.
+- **Kalendar** — oy kesimida hammaga ko'rinadi: har kunda bino, vaqt va navbatchilar,
+  holat rangida (rejada / bugun / naryadda / yakunlangan / chiqmagan).
+- **Naryadni boshlash** — tugma faqat navbat kuni chiqadi (boshlanishdan 60 daqiqa oldin
+  faollashadi). Bosilganda telefon GPS'i orqali a'zoning joylashuvi olinadi va server
+  naryad koordinatasi bilan solishtiradi: faqat radius ichida bo'lsa naryad boshlanadi.
+- **Qonunbuzarliklar** — naryad davomida: turi, vaqti, talabaning F.I.Sh, fakulteti, yo'nalishi,
+  guruhi, kursi, TTJ va xona raqami, tyutori, maxsus izoh, ixtiyoriy rasm. Sardorga bildirishnoma.
+- **Naryadni yakunlash** — tugma faqat tugash vaqtidan (masalan 22:00) keyin chiqadi.
+  A'zo qonunbuzarliklarni qayta tasdiqlaydi, sherigi bilan tushgan rasmni yuklaydi va
+  yana joylashuv tekshiriladi — faqat hudud ichida bo'lsa yakunlanadi.
+- **Statistika** (sardor va admin, avtomatik): naryad intizomi, qaysi bino/TTJda qonunbuzarlik
+  ko'p, **TTJlar intizom reytingi**, turlar, fakultetlar, kurslar, soatlar va kunlar dinamikasi,
+  kimning naryadida qanday qonunbuzarliklar, takroriy qonunbuzarlar, tyutorlar kesimi,
+  a'zolarning intizomi. **Excel hisobot** (bir nechta varaq) va chop etish.
+- Har bir joylashuv tekshiruvi (muvaffaqiyatli yoki rad etilgan) jurnalga yoziladi —
+  sardor naryad sahifasida ko'radi.
+
+> **Muhim:** brauzer GPS'ni faqat **HTTPS** orqali ochilgan saytga beradi. Serverga
+> SSL sertifikat o'rnatilishi shart (masalan, Let's Encrypt). Xarita OpenStreetMap
+> plitkalaridan foydalanadi (internet kerak); xarita yuklanmasa ham GPS tekshiruvi ishlaydi.
+
+Sozlamalar (muhit o'zgaruvchilari): `QALQON_START_EARLY_MINUTES` (60),
+`QALQON_FINISH_GRACE_HOURS` — tugash vaqtidan keyin yakunlash uchun soatlar (6),
+`QALQON_MAX_GPS_ACCURACY` — qabul qilinadigan eng yomon GPS aniqligi, metr (150).
+
+### A'zolar ro'yxatini bazaga qo'shish
+
+```bash
+python manage.py import_qalqon_members azolar.xlsx
+```
+
+Ustunlar: `Familiya`, `Ism`, `Otasining ismi` (yoki bitta `F.I.Sh`), `Fakultet`, `Yo'nalish`,
+`Guruh`, `Kurs`, `Telefon`, `TTJ`, `Xona` (ixtiyoriy: `Login`, `Parol`, `Rol` — "sardor").
+Natijada `azolar_loginlar.xlsx` fayli yaratiladi. Xuddi shuni sayt orqali ham qilish mumkin:
+**Qalqon → A'zolar → Exceldan import**.
+
+Sardor va admin hisoblari: admin panelda yoki Qalqon → A'zolar → "A'zo qo'shish"da
+(umumiy admin rolni tanlay oladi). Demo: `python manage.py seed_qalqon`
+(`qalqon_admin`, `sardor`, `qalqon1…qalqon16`, parol `demo1234`).
+
 ## O'rnatish va ishga tushirish
 
 Python 3.10+ kerak.
@@ -75,7 +128,7 @@ python manage.py send_reminders            # cron orqali soatiga bir marta
 ### Testlar
 
 ```bash
-python manage.py test core
+python manage.py test
 ```
 
 ## Serverga joylash (qisqacha)
@@ -108,5 +161,7 @@ core/models.py      Faculty, User (rol: bo'lim boshlig'i / tyutor), Task, TaskFi
 core/views/         dashboard (kalendar), people (fakultet/tyutor), tasks, reports, notifications
 core/services.py    bildirishnomalar va vaqt holatiga ko'ra hisobot hisob-kitobi
 core/management/    create_head, seed_demo, send_reminders buyruqlari
+qalqon/             Qalqon moduli: Building, MemberProfile, Duty, DutyMember, Violation, LocationLog;
+                    import_qalqon_members va seed_qalqon buyruqlari
 templates/, static/ interfeys (HTML, CSS, JS)
 ```

@@ -104,6 +104,10 @@
       icons();
     }
     function add(files) {
+      if (!input.multiple) {
+        dt = new DataTransfer();
+        files = Array.prototype.slice.call(files, 0, 1);
+      }
       Array.prototype.forEach.call(files, function (f) { dt.items.add(f); });
       input.files = dt.files;
       render();
