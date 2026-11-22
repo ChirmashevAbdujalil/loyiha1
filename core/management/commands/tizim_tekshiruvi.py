@@ -124,6 +124,10 @@ class Command(BaseCommand):
                 rel = path.relative_to(directory).as_posix()
                 try:
                     engine.get_template(rel)
+                except UnicodeDecodeError:
+                    failed += 1
+                    self.bad(f"templates/{rel}: fayl UTF-8 kodlashda saqlanmagan (muharrir boshqa kodlashda saqlagan)",
+                             "Faylni asl nusxasi bilan almashtiring yoki muharrirda «UTF-8» kodlashda qayta saqlang")
                 except Exception as exc:  # noqa: BLE001
                     failed += 1
                     self.bad(f"templates/{rel}: {exc}", "Shablondagi o'zgartirishni qo'llanma bilan solishtiring")
@@ -145,6 +149,12 @@ class Command(BaseCommand):
                 self.bad(f"Model fayli buzilgan (juda kichik): {path.name}", "Faylni qayta yuklab oling")
         if face.available():
             self.ok("Modellar yuklandi")
+        else:
+            try:
+                face._load()
+            except face.FaceUnavailable as exc:
+                self.bad(f"Yuz tekshiruvi ishlamaydi: {exc}",
+                         "pip install opencv-python-headless (u numpy'ni ham o'rnatadi)")
         try:
             enabled = qalqon_conf()["face_check_enabled"]
             self.ok(f"Sozlamalarda yuz tekshiruvi {'yoqilgan' if enabled else 'o' + chr(39) + 'chirilgan'}")
