@@ -112,3 +112,30 @@ QALQON_MAX_GPS_ACCURACY = int(os.environ.get("QALQON_MAX_GPS_ACCURACY", 150))
 QALQON_MAX_PHOTO_SIZE = 15 * 1024 * 1024
 # migrate'dan keyin bir marta avtomatik yuklanadigan Qalqon a'zolari arxivi (bo'sh qiymat — o'chirish)
 QALQON_INITIAL_DATA = os.environ.get("QALQON_INITIAL_DATA", str(BASE_DIR / "data" / "qalqon_azolar.zip"))
+
+# ---------------------------------------------------------------- Xatolar jurnali
+# DEBUG=False bo'lganda ham server xatolari (500) to'liq traceback bilan konsolga va
+# logs/errors.log fayliga yoziladi.
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"verbose": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"}},
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "verbose"},
+        "errors_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOG_DIR / "errors.log"),
+            "maxBytes": 5 * 1024 * 1024,
+            "backupCount": 3,
+            "encoding": "utf-8",
+            "formatter": "verbose",
+            "level": "ERROR",
+        },
+    },
+    "loggers": {
+        "django.request": {"handlers": ["console", "errors_file"], "level": "ERROR", "propagate": False},
+        "django.server": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+}

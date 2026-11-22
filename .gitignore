@@ -15,3 +15,6 @@ venv/
 *.zip
 *_loginlar.xlsx
 !data/qalqon_azolar.zip
+
+# Xatolar jurnali
+logs/

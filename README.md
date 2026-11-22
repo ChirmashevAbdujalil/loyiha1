@@ -201,6 +201,17 @@ Yuklangan fayllar `media/` papkasida saqlanadi va faqat ruxsati bor foydalanuvch
 nginx orqali ochiq qilmang. Ma'lumotlar bazasi standart holatda SQLite; ko'p foydalanuvchi
 uchun PostgreSQL'ga o'tkazish `config/settings.py` dagi `DATABASES` orqali qilinadi.
 
+## Xatolarni aniqlash (Server Error 500)
+
+```bash
+python manage.py tizim_tekshiruvi
+```
+
+Buyruq bajarilmagan migratsiyalar, yetishmayotgan jadval/ustunlar, o'rnatilmagan kutubxonalar, Python fayllaridagi
+sintaksis/chekinish xatolari, buzilgan shablonlar, yuz modellari, papkalarga yozish huquqi, `collectstatic` va
+sozlamalarni tekshiradi; har bir muammo uchun nima qilish kerakligini yozadi. Server xatolari (500) `DEBUG=False`
+bo'lganda ham to'liq matni bilan `logs/errors.log` fayliga yoziladi.
+
 ## Tuzilma
 
 ```
