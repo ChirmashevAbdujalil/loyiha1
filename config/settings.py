@@ -9,6 +9,13 @@ Muhit o'zgaruvchilari:
 import os
 from pathlib import Path
 
+# numpy/OpenCV hisoblash kutubxonalari protsessorlar soniga qarab o'nlab oqim (thread) ochadi. Shared
+# hostingda bunga ruxsat yo'q ("pthread_create failed … Resource temporarily unavailable") va import
+# osilib qoladi. Shuning uchun ular numpy yuklanishidan OLDIN bitta oqimga cheklanadi.
+for _var in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS",
+             "VECLIB_MAXIMUM_THREADS", "OPENCV_FOR_THREADS_NUM"):
+    os.environ.setdefault(_var, "1")
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get(

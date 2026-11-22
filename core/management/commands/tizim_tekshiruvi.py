@@ -3,6 +3,7 @@
     python manage.py tizim_tekshiruvi
 """
 import importlib
+import os
 from pathlib import Path
 
 from django.apps import apps
@@ -53,8 +54,31 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
     def check_packages(self):
         self.section("1. Kutubxonalar")
+        # numpy/OpenCV ni avval alohida jarayonda vaqt chegarasi bilan sinaymiz — hostingda yuklanishi osilib
+        # qolsa (oqimlar cheklovi), buyruq ham osilib qolmasin.
+        import subprocess
+        import sys
+
+        heavy_ok = True
+        try:
+            res = subprocess.run([sys.executable, "-c", "import numpy, cv2; print(cv2.__version__)"],
+                                 capture_output=True, text=True, timeout=90, env=os.environ.copy())
+            if res.returncode != 0:
+                heavy_ok = False
+                last = (res.stderr.strip().splitlines() or ["noma'lum xato"])[-1]
+                self.bad(f"numpy/OpenCV yuklanmadi: {last}", "pip install --no-cache-dir opencv-python-headless")
+            elif "pthread_create failed" in res.stderr:
+                self.warn("OpenBLAS ko'p oqim ochishga urindi (hosting cheklovi)",
+                          "config/settings.py boshidagi OPENBLAS_NUM_THREADS=1 qatorlari borligini tekshiring")
+        except subprocess.TimeoutExpired:
+            heavy_ok = False
+            self.bad("numpy/OpenCV yuklanishi 90 soniyada tugamadi (osilib qoldi)",
+                     "Hosting oqimlar sonini cheklagan: config/settings.py boshida OPENBLAS_NUM_THREADS=1 bo'lsin; "
+                     "cPanel → Setup Python App → Environment variables ga ham OPENBLAS_NUM_THREADS=1 qo'shing")
         for module, pip_name in (("django", "Django"), ("openpyxl", "openpyxl"), ("docx", "python-docx"),
                                  ("PIL", "Pillow"), ("numpy", "numpy"), ("cv2", "opencv-python-headless")):
+            if module in ("numpy", "cv2") and not heavy_ok:
+                continue
             try:
                 mod = importlib.import_module(module)
                 self.ok(f"{pip_name} {getattr(mod, '__version__', '')}")
@@ -136,6 +160,10 @@ class Command(BaseCommand):
 
     def check_face(self):
         self.section("6. Yuz tekshiruvi")
+        threads = os.environ.get("OPENBLAS_NUM_THREADS")
+        if threads != "1":
+            self.warn(f"OPENBLAS_NUM_THREADS = {threads!r} (shared hostingda 1 bo'lishi kerak)",
+                      "config/settings.py ning yangi versiyasini qo'ying")
         try:
             from qalqon import face
             from qalqon.models import qalqon_conf
