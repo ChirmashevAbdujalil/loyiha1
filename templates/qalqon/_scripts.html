@@ -1,16 +1,49 @@
 {% load static core_tags %}
-<script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
-<script src="{% vstatic 'js/qalqon.js' %}"></script>
 <script>
-// Serverda yuz tekshiruvi yoqilgan, lekin brauzer eski qalqon.js ni olgan bo'lsa — ogohlantiramiz
+// qalqon.js yuklanayotganda JS xato bo'lsa, tashxis uchun eslab qolamiz
+window.__qalqonErrors = [];
+window.addEventListener("error", function (e) {
+  window.__qalqonErrors.push((e.message || "xato") + (e.filename ? " — " + e.filename.split("/").pop() + ":" + e.lineno : ""));
+});
+</script>
+<script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+<script src="{% vstatic 'js/qalqon.js' %}" id="qalqon-js"></script>
+<script>
+// Serverda yuz tekshiruvi yoqilgan, lekin brauzerda kamera kodi ishlamasa — sababini aniqlab ko'rsatamiz:
+//  (1) qalqon.js umuman yuklanmagan, (2) brauzerga ESKI qalqon.js kelmoqda, (3) fayl yangi, lekin JS xato bergan.
 (function () {
   var form = document.querySelector("form[data-face-challenge]");
-  if (!form || (window.Qalqon && window.Qalqon.faceSupport)) return;
-  var box = document.createElement("div");
-  box.className = "alert alert-danger mb-3";
-  box.innerHTML = "<div><b>Sahifa eski versiyada yuklandi — yuz tekshiruvi oynasi ochilmaydi.</b><br>" +
-    "Sahifani yangilang (pastga tortib qo'yib yuboring). Yordam bermasa, administrator serverda " +
-    "<code>python manage.py collectstatic --noinput --clear</code> bajarib, saytni qayta ishga tushirsin.</div>";
-  form.parentNode.insertBefore(box, form);
+  if (!form || (window.Qalqon && window.Qalqon.runFace)) return;
+  var tag = document.getElementById("qalqon-js");
+  function show(title, body) {
+    var box = document.createElement("div");
+    box.className = "alert alert-danger mb-3";
+    box.style.display = "block";
+    box.innerHTML = "<b>Yuz tekshiruvi oynasi ochilmaydi: " + title + "</b><div class='small mt-1'>" + body + "</div>";
+    form.parentNode.insertBefore(box, form);
+  }
+  var url = tag ? tag.src : "";
+  fetch(url, { cache: "no-store", credentials: "same-origin" }).then(function (r) {
+    return r.text().then(function (t) { return { status: r.status, text: t }; });
+  }).then(function (res) {
+    var kb = Math.round(res.text.length / 1024);
+    if (res.status !== 200) {
+      show("qalqon.js yuklanmadi (HTTP " + res.status + ").",
+        "Manzil: <code>" + url + "</code>. Administrator: veb-server /static/ papkasini tekshirsin.");
+    } else if (res.text.indexOf("runFace") === -1) {
+      show("brauzerga ESKI qalqon.js kelmoqda (" + kb + " KB).",
+        "Sahifani yangilang. Takrorlansa — administrator: serverdagi <code>static/js/qalqon.js</code> yangi " +
+        "ekanini tekshirsin, <code>python manage.py collectstatic --noinput --clear</code> bajarsin; sayt /static/ " +
+        "ni boshqa papkadan (masalan, public_html/static) bersa, yangi faylni o'sha yerga ham nusxalasin.");
+    } else if (window.Qalqon && !(window.__qalqonErrors || []).length) {
+      return;  // yuz kodi bor va fayl xatosiz ishga tushgan (oldingi versiya — runFace tashqariga chiqarilmagan)
+    } else {
+      var errs = (window.__qalqonErrors || []).join("<br>") || "noma'lum";
+      show("qalqon.js yangi (" + kb + " KB), lekin brauzerda xato berdi.",
+        "Xato: <code>" + errs.replace(/</g, "&lt;") + "</code>. Shu matnni administratorga yuboring.");
+    }
+  }).catch(function (e) {
+    show("qalqon.js ni tekshirib bo'lmadi.", "Manzil: <code>" + url + "</code> (" + e + ")");
+  });
 })();
 </script>
