@@ -53,11 +53,16 @@ def _load():
 
 
 def available():
+    return unavailable_reason() is None
+
+
+def unavailable_reason():
+    """Yuz tekshiruvi ishlamasa — sababi (matn), ishlasa — None."""
     try:
         _load()
-        return True
-    except FaceUnavailable:
-        return False
+        return None
+    except FaceUnavailable as exc:
+        return str(exc)
 
 
 def decode_image(data):

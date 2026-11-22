@@ -49,9 +49,11 @@ def face_challenge(request, pk):
     if FaceCheck.objects.filter(duty_member=dm, created_at__gte=since).count() >= MAX_ATTEMPTS:
         return JsonResponse({"ok": False, "message": "Urinishlar ko'p bo'ldi. 15 daqiqadan keyin qayta urining "
                                                      "yoki sardorga murojaat qiling."}, status=429)
-    if not face.available():
-        return JsonResponse({"ok": False, "message": "Serverda yuz tekshiruvi sozlanmagan. Sardorga xabar bering."},
-                            status=503)
+    reason = face.unavailable_reason()
+    if reason:
+        return JsonResponse({"ok": False, "message": f"Serverda yuz tekshiruvi sozlanmagan: {reason} "
+                                                     f"Sardorga xabar bering (yoki Qalqon → Sozlamalarda yuz "
+                                                     f"tekshiruvini vaqtincha o'chirsin)."}, status=503)
     steps = face.new_challenge()
     nonce = secrets.token_urlsafe(16)
     request.session[_key("challenge", dm, action)] = {"nonce": nonce, "steps": steps, "t": time.time()}
