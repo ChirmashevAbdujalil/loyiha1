@@ -1,3 +1,16 @@
 {% load static core_tags %}
 <script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
 <script src="{% vstatic 'js/qalqon.js' %}"></script>
+<script>
+// Serverda yuz tekshiruvi yoqilgan, lekin brauzer eski qalqon.js ni olgan bo'lsa — ogohlantiramiz
+(function () {
+  var form = document.querySelector("form[data-face-challenge]");
+  if (!form || (window.Qalqon && window.Qalqon.faceSupport)) return;
+  var box = document.createElement("div");
+  box.className = "alert alert-danger mb-3";
+  box.innerHTML = "<div><b>Sahifa eski versiyada yuklandi — yuz tekshiruvi oynasi ochilmaydi.</b><br>" +
+    "Sahifani yangilang (pastga tortib qo'yib yuboring). Yordam bermasa, administrator serverda " +
+    "<code>python manage.py collectstatic --noinput --clear</code> bajarib, saytni qayta ishga tushirsin.</div>";
+  form.parentNode.insertBefore(box, form);
+})();
+</script>

@@ -100,7 +100,8 @@ def check_passed(request, dm, action):
         return None
     token = request.session.get(_key("ok", dm, action))
     if not token or time.time() - token["t"] > PASS_TTL:
-        return "Avval jonli yuz tekshiruvidan o'ting."
+        return ("Avval jonli yuz tekshiruvidan o'ting. Tugmani bosganda kamera oynasi ochilmagan bo'lsa, sahifani "
+                "yangilang; yordam bermasa, sardorga xabar bering (serverda collectstatic kerak).")
     return None
 
 

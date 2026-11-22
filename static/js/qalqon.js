@@ -315,5 +315,6 @@
     });
   });
 
-  window.Qalqon = { maps: maps, haversine: haversine };
+  // Shablon shu belgiga qarab eski (yuz tekshiruvisiz) JS fayl yuklanganini aniqlaydi
+  window.Qalqon = { maps: maps, haversine: haversine, runFace: runFace, faceSupport: 1 };
 })();

@@ -115,7 +115,12 @@ _static_versions = {}
 
 @register.simple_tag
 def vstatic(path):
-    """{% static %} + ?v=<fayl o'zgargan vaqt> — yangilanishdan keyin brauzer eski faylni keshdan olmaydi."""
+    """{% static %} + ?v=<fayl tarkibi xeshi> — yangilanishdan keyin brauzer eski faylni keshdan olmaydi.
+
+    Versiya veb-server aynan beradigan fayldan hisoblanadi: collectstatic yig'gan nusxa (STATIC_ROOT) bo'lsa —
+    o'sha, bo'lmasa static/ dagi manba fayl.
+    """
+    import hashlib
     import os
 
     from django.conf import settings
@@ -124,10 +129,15 @@ def vstatic(path):
 
     version = None if settings.DEBUG else _static_versions.get(path)
     if version is None:
-        found = finders.find(path)
-        if not found and settings.STATIC_ROOT:
+        found = None
+        if settings.STATIC_ROOT:
             candidate = os.path.join(settings.STATIC_ROOT, path)
             found = candidate if os.path.exists(candidate) else None
-        version = str(int(os.path.getmtime(found))) if found else "0"
+        found = found or finders.find(path)
+        if found:
+            with open(found, "rb") as fh:
+                version = hashlib.md5(fh.read()).hexdigest()[:10]
+        else:
+            version = "0"
         _static_versions[path] = version
     return f"{static(path)}?v={version}"

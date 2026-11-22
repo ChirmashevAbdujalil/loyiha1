@@ -164,14 +164,20 @@ class Command(BaseCommand):
             except Exception as exc:  # noqa: BLE001
                 self.bad(f"{label}: {path} — yozib bo'lmaydi ({exc})",
                          "Papkaga server foydalanuvchisiga yozish huquqini bering (masalan: chown -R www-data)")
-        if not settings.DEBUG:
-            root = Path(settings.STATIC_ROOT)
+        root = Path(settings.STATIC_ROOT) if settings.STATIC_ROOT else None
+        if root and (root.exists() or not settings.DEBUG):
+            stale = []
             for rel in ("css/app.css", "js/app.js", "js/qalqon.js"):
                 target, source = root / rel, Path(settings.BASE_DIR) / "static" / rel
                 if not target.exists():
-                    self.bad(f"static: {rel} STATIC_ROOT da yo'q", "python manage.py collectstatic --noinput")
-                elif source.exists() and source.stat().st_mtime > target.stat().st_mtime + 1:
-                    self.warn(f"static: {rel} eskirgan (yangi versiya yig'ilmagan)", "python manage.py collectstatic --noinput")
+                    self.bad(f"static: {rel} — {root} papkasida yo'q", "python manage.py collectstatic --noinput --clear")
+                elif source.exists() and source.read_bytes() != target.read_bytes():
+                    stale.append(rel)
+            for rel in stale:
+                self.bad(f"static: {rel} — {root} dagi nusxa ESKI (brauzerga eski kod boradi; masalan, yuz "
+                         f"tekshiruvi oynasi ochilmaydi)", "python manage.py collectstatic --noinput --clear, so'ng saytni qayta ishga tushiring")
+            if not stale:
+                self.ok(f"Statik fayllar yangi ({root})")
 
     def check_settings(self):
         self.section("8. Sozlamalar")
