@@ -1,4 +1,5 @@
 """Jonli yuz tekshiruvi: topshiriq berish, kadrlarni tekshirish, natijani sessiyada saqlash."""
+import logging
 import secrets
 import time
 from datetime import timedelta
@@ -13,6 +14,8 @@ from django.views.decorators.http import require_POST
 from . import face
 from .decorators import qalqon_required
 from .models import DutyMember, FaceCheck, MemberProfile, qalqon_conf
+
+logger = logging.getLogger("qalqon.face")
 
 CHALLENGE_TTL = 180      # topshiriq berilgandan keyin kadrlar shu soniya ichida yuborilishi kerak
 PASS_TTL = 600           # yuz tasdiqlangach, naryadni shu soniya ichida boshlash/yakunlash kerak
@@ -84,13 +87,22 @@ def face_verify(request, pk):
         verdict = face.verify(frames, challenge["steps"], reference, qalqon_conf()["face_threshold"])
     except face.FaceUnavailable as exc:
         return JsonResponse({"ok": False, "message": str(exc)}, status=503)
+    except Exception as exc:  # noqa: BLE001 — kutilmagan xato: 500 o'rniga aniq xabar, to'liq matn jurnalga
+        logger.exception("Yuz tekshiruvida xato (navbat %s, %s)", dm.pk, action)
+        return JsonResponse({"ok": False, "message": f"Serverda yuz tekshiruvida xato: {type(exc).__name__}: "
+                                                     f"{str(exc)[:200]}. Sardorga xabar bering."}, status=500)
 
     check = FaceCheck(duty_member=dm, action=action, passed=verdict.passed, liveness=verdict.liveness,
                       similarity=verdict.similarity, message=verdict.message[:255],
                       user_agent=request.META.get("HTTP_USER_AGENT", "")[:300])
     center = frames[challenge["steps"].index("center")]
-    check.selfie.save("selfie.jpg", ContentFile(center), save=False)
-    check.save()
+    try:
+        check.selfie.save("selfie.jpg", ContentFile(center), save=False)
+        check.save()
+    except Exception as exc:  # noqa: BLE001 — masalan, media papkasiga yozish huquqi yo'q
+        logger.exception("Yuz tekshiruvi natijasini saqlab bo'lmadi (navbat %s)", dm.pk)
+        return JsonResponse({"ok": False, "message": f"Natijani saqlab bo'lmadi: {type(exc).__name__}: "
+                                                     f"{str(exc)[:200]}. Sardorga xabar bering."}, status=500)
     if verdict.passed:
         request.session[_key("ok", dm, action)] = {"id": check.pk, "t": time.time()}
     return JsonResponse({"ok": verdict.passed, "message": verdict.message})

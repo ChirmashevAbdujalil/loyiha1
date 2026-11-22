@@ -618,6 +618,21 @@ class FaceCheckTests(TestCase):
         self.client.force_login(other)
         self.assertEqual(self.client.get(reverse("qalqon:face_selfie", args=[checks[1].pk])).status_code, 403)
 
+    def test_unexpected_error_returns_clear_message(self):
+        from . import face
+
+        self.client.force_login(self.m)
+        with self._at(18, 3):
+            ch = self.client.post(reverse("qalqon:face_challenge", args=[self.dm.pk]), {"action": "start"}).json()
+            with mock.patch.object(face, "verify", side_effect=RuntimeError("sinov xatosi")), \
+                    mock.patch.object(face, "reference_feature", return_value=None), \
+                    self.assertLogs("qalqon.face", level="ERROR") as logs:
+                r = self.client.post(reverse("qalqon:face_verify", args=[self.dm.pk]),
+                                     {"action": "start", "nonce": ch["nonce"], **self._frames()})
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("RuntimeError: sinov xatosi", r.json()["message"])
+        self.assertIn("Traceback", "\n".join(logs.output))
+
     def test_disabled_in_settings(self):
         from .models import QalqonSettings
 

@@ -48,9 +48,14 @@ def _load():
     if not DETECTOR_MODEL.exists() or not RECOGNIZER_MODEL.exists():
         raise FaceUnavailable("Yuz tekshiruvi modellari topilmadi (qalqon/face_models).")
     cv2.setNumThreads(1)  # shared hostingda ko'p oqim ochishga ruxsat yo'q
-    _models["det"] = cv2.FaceDetectorYN.create(str(DETECTOR_MODEL), "", (320, 320), 0.8, 0.3, 50)
-    _models["rec"] = cv2.FaceRecognizerSF.create(str(RECOGNIZER_MODEL), "")
-    return _models["det"], _models["rec"]
+    try:
+        det = cv2.FaceDetectorYN.create(str(DETECTOR_MODEL), "", (320, 320), 0.8, 0.3, 50)
+        rec = cv2.FaceRecognizerSF.create(str(RECOGNIZER_MODEL), "")
+    except Exception as exc:  # noqa: BLE001 — buzilgan model fayli, mos kelmaydigan OpenCV versiyasi va h.k.
+        raise FaceUnavailable(f"Yuz modellari yuklanmadi ({type(exc).__name__}: {exc}). Model fayllarini "
+                              f"qayta yuklang va OpenCV versiyasini tekshiring.") from exc
+    _models["det"], _models["rec"] = det, rec
+    return det, rec
 
 
 def available():

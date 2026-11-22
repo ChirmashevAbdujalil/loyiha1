@@ -183,11 +183,58 @@ class Command(BaseCommand):
             except face.FaceUnavailable as exc:
                 self.bad(f"Yuz tekshiruvi ishlamaydi: {exc}",
                          "pip install opencv-python-headless (u numpy'ni ham o'rnatadi)")
+        if face.available():
+            self.check_member_photos(face)
         try:
             enabled = qalqon_conf()["face_check_enabled"]
             self.ok(f"Sozlamalarda yuz tekshiruvi {'yoqilgan' if enabled else 'o' + chr(39) + 'chirilgan'}")
         except Exception as exc:  # noqa: BLE001
             self.bad(f"Sozlamalarni o'qib bo'lmadi: {exc}", "python manage.py migrate")
+
+    def check_member_photos(self, face):
+        """A'zolar rasmlarini yuz modelidan o'tkazadi va to'liq tekshiruv zanjirini sinaydi."""
+        import traceback
+
+        from qalqon.models import MemberProfile
+
+        profiles = list(MemberProfile.objects.exclude(photo="").select_related("user")
+                        .filter(user__is_active=True))
+        no_face, failed, ok, sample = [], [], 0, None
+        for p in profiles:
+            try:
+                if face.reference_feature(p) is None:
+                    no_face.append(p.user.full_name)
+                else:
+                    ok += 1
+                    sample = sample or p
+            except Exception as exc:  # noqa: BLE001
+                failed.append(f"{p.user.full_name}: {type(exc).__name__}: {exc}")
+        without_photo = MemberProfile.objects.filter(photo="", user__is_active=True,
+                                                     user__role__startswith="qalqon").count()
+        self.ok(f"A'zolar rasmlari: {ok} tasida yuz aniqlandi" + (f", {without_photo} ta a'zoning rasmi yo'q"
+                                                                  if without_photo else ""))
+        if no_face:
+            self.warn(f"Rasmida yuz topilmagan a'zolar ({len(no_face)}): " + ", ".join(no_face[:10]),
+                      "Bu a'zolarga aniq, yuzi to'liq ko'ringan rasm yuklang — aks holda tekshiruvdan o'tolmaydi")
+        for line in failed[:5]:
+            self.bad(f"Rasmni qayta ishlashda xato — {line}")
+        if sample is None:
+            return
+        # To'liq zanjir: rasmni o'qish → yuzni topish → solishtirish. Bir xil rasm 3 marta yuboriladi,
+        # shuning uchun kutilgan natija — "bosh burilishi aniqlanmadi" (xato emas).
+        try:
+            with sample.photo.open("rb") as fh:
+                data = fh.read()
+            verdict = face.verify([data, data, data], ["center", "left", "right"],
+                                  face.reference_feature(sample), 0.36)
+            if verdict.liveness:
+                self.warn("Sinov: qotgan rasm jonlilikdan o'tib ketdi (kutilmagan)")
+            else:
+                self.ok("Yuz tekshiruvi zanjiri serverda ishlayapti (sinov rasmi kutilganidek rad etildi)")
+        except Exception as exc:  # noqa: BLE001
+            self.bad(f"Yuz tekshiruvi zanjirida xato: {type(exc).__name__}: {exc}")
+            for line in traceback.format_exc().strip().splitlines()[-6:]:
+                self.stdout.write("      " + line)
 
     def check_files(self):
         self.section("7. Fayllar va papkalar")

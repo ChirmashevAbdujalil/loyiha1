@@ -144,5 +144,6 @@ LOGGING = {
     "loggers": {
         "django.request": {"handlers": ["console", "errors_file"], "level": "ERROR", "propagate": False},
         "django.server": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "qalqon": {"handlers": ["console", "errors_file"], "level": "WARNING", "propagate": False},
     },
 }
