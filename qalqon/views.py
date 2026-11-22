@@ -17,10 +17,10 @@ from django.views.decorators.http import require_POST
 from core.models import Faculty, User
 from core.utils import WEEKDAYS, WEEKDAYS_SHORT, month_grid, month_title, parse_date, shift_month
 
-from . import services
+from . import face_views, services
 from .decorators import qalqon_required, staff_required
 from .forms import DutyForm, FinishForm, LocationForm, ViolationForm
-from .models import Building, Duty, DutyMember, LocationLog, Violation, qalqon_conf
+from .models import Building, Duty, DutyMember, FaceCheck, LocationLog, Violation, qalqon_conf
 
 # Kalendar katagidagi naryad rangi — eng "muhim" holat bo'yicha
 DUTY_PRIORITY = {"missed": 0, "unfinished": 1, "active": 2, "today": 3, "scheduled": 4, "finished": 5}
@@ -320,6 +320,9 @@ def duty_detail(request, pk):
         "logs": logs,
         "status": _duty_status(dms),
         "max_accuracy": qalqon_conf()["max_gps_accuracy"],
+        "face_enabled": face_views.face_required(),
+        "face_checks": FaceCheck.objects.filter(duty_member__duty=duty).select_related("duty_member__member__qalqon_profile")[:60]
+        if is_staff else [],
     })
 
 
@@ -346,6 +349,10 @@ def duty_start(request, pk):
     if state != "ok":
         messages.error(request, START_MESSAGES[state])
         return redirect(dm)
+    face_error = face_views.check_passed(request, dm, "start")
+    if face_error:
+        messages.error(request, "Naryad boshlanmadi. " + face_error)
+        return redirect(dm)
     form = LocationForm(request.POST)
     if not form.is_valid():
         for errs in form.errors.values():
@@ -363,6 +370,7 @@ def duty_start(request, pk):
     dm.start_lat, dm.start_lng = round(lat, 6), round(lng, 6)
     dm.start_accuracy, dm.start_distance = acc, distance
     dm.save()
+    face_views.consume(request, dm, "start")
     messages.success(request, f"Naryad boshlandi! {msg} Qonunbuzarliklarni shu sahifada qayd eting.")
     return redirect(dm)
 
@@ -385,7 +393,11 @@ def duty_finish(request, pk):
     violations = dm.violations.select_related("faculty", "dormitory", "tutor")
     form = FinishForm(request.POST or None, request.FILES or None)
     if request.method == "POST":
-        if form.is_valid():
+        face_error = face_views.check_passed(request, dm, "finish")
+        if face_error:
+            form.is_valid()
+            form.add_error(None, face_error)
+        elif form.is_valid():
             cd = form.cleaned_data
             ok, distance, msg = services.check_location(
                 dm, "finish", cd["latitude"], cd["longitude"], cd["accuracy"],
@@ -402,12 +414,14 @@ def duty_finish(request, pk):
                     dm.finish_note = cd["finish_note"]
                     dm.save()
                     dm.violations.update(confirmed_at=now)
+                face_views.consume(request, dm, "finish")
                 messages.success(request, f"Naryad yakunlandi. Rahmat! {msg}")
                 return redirect(dm)
             form.add_error(None, "Naryad yakunlanmadi. " + msg)
     return render(request, "qalqon/duty_finish.html", {
         "dm": dm, "duty": dm.duty, "form": form, "violations": violations,
         "max_accuracy": qalqon_conf()["max_gps_accuracy"],
+        "face_enabled": face_views.face_required(),
     })
 
 

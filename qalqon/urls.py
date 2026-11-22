@@ -1,5 +1,6 @@
 from django.urls import path
 
+from . import face_views
 from . import manage_views as mv
 from . import views
 
@@ -22,6 +23,9 @@ urlpatterns = [
     path("navbat/<int:pk>/yakunlash/", views.duty_finish, name="duty_finish"),
     path("navbat/<int:pk>/qonunbuzarlik/", views.violation_add, name="violation_add"),
     path("navbat/<int:pk>/rasm/", views.duty_photo, name="duty_photo"),
+    path("navbat/<int:pk>/yuz/topshiriq/", face_views.face_challenge, name="face_challenge"),
+    path("navbat/<int:pk>/yuz/tekshirish/", face_views.face_verify, name="face_verify"),
+    path("yuz-tekshiruvi/<int:pk>/selfi/", face_views.face_selfie, name="face_selfie"),
 
     path("qonunbuzarliklar/", mv.violation_list, name="violation_list"),
     path("qonunbuzarliklar/excel/", mv.violation_export, name="violation_export"),

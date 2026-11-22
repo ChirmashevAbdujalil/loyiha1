@@ -306,4 +306,5 @@ class ImportForm(forms.Form):
 class QalqonSettingsForm(forms.ModelForm):
     class Meta:
         model = QalqonSettings
-        fields = ["max_gps_accuracy", "start_early_minutes", "finish_grace_hours"]
+        fields = ["max_gps_accuracy", "start_early_minutes", "finish_grace_hours", "face_check_enabled",
+                  "face_threshold"]

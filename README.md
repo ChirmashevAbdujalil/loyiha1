@@ -80,6 +80,13 @@ Uchta rol: **umumiy admin** (bo'lim boshlig'i ham admin huquqiga ega), **sardor*
 > SSL sertifikat o'rnatilishi shart (masalan, Let's Encrypt). Xarita OpenStreetMap
 > plitkalaridan foydalanadi (internet kerak); xarita yuklanmasa ham GPS tekshiruvi ishlaydi.
 
+**Jonli yuz tekshiruvi.** Naryadni boshlash va yakunlashdan oldin a'zo old kamerada yuzini ko'rsatadi va
+boshini (tasodifiy tartibda) chapga va o'ngga buradi. Server (OpenCV YuNet + SFace, modellar
+`qalqon/face_models/` da, internet kerak emas) har bir kadrda yuzni topadi, bosh burilishini tekshiradi —
+qog'ozdagi yoki ekrandagi rasm bilan o'tib bo'lmaydi — va yuzni a'zoning bazadagi rasmi bilan solishtiradi.
+Selfi va o'xshashlik foizi sardorga naryad sahifasida ko'rinadi. Yoqish/o'chirish va o'xshashlik chegarasi:
+**Qalqon → Sozlamalar**. Kamera ham faqat HTTPS orqali ishlaydi.
+
 Sozlamalar (muhit o'zgaruvchilari): `QALQON_START_EARLY_MINUTES` (60),
 `QALQON_FINISH_GRACE_HOURS` — tugash vaqtidan keyin yakunlash uchun soatlar (6),
 `QALQON_MAX_GPS_ACCURACY` — qabul qilinadigan eng yomon GPS aniqligi, metr (150).

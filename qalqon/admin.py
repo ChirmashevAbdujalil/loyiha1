@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Building, Duty, DutyMember, LocationLog, MemberProfile, Violation
+from .models import Building, Duty, DutyMember, FaceCheck, LocationLog, MemberProfile, Violation
 
 
 @admin.register(Building)
@@ -36,3 +36,9 @@ class LocationLogAdmin(admin.ModelAdmin):
 
 
 admin.site.register(MemberProfile)
+
+
+@admin.register(FaceCheck)
+class FaceCheckAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "duty_member", "action", "passed", "liveness", "similarity", "used")
+    list_filter = ("action", "passed", "liveness")

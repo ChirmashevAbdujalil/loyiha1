@@ -11,7 +11,8 @@
 </div>
 
 <form method="post" enctype="multipart/form-data" data-geo data-lat="{{ duty.latitude|stringformat:'s' }}" data-lng="{{ duty.longitude|stringformat:'s' }}"
-      data-radius="{{ duty.radius_m }}" data-max-accuracy="{{ max_accuracy }}" data-map="duty-map">{% csrf_token %}
+      data-radius="{{ duty.radius_m }}" data-max-accuracy="{{ max_accuracy }}" data-map="duty-map"
+      {% if face_enabled %}data-face-challenge="{% url 'qalqon:face_challenge' dm.pk %}" data-face-verify="{% url 'qalqon:face_verify' dm.pk %}" data-face-action="finish"{% endif %}>{% csrf_token %}
   {% if form.non_field_errors %}<div class="alert alert-danger mb-3"><i data-lucide="alert-octagon"></i> {% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
   <div class="detail-grid">
     <div>
@@ -53,7 +54,7 @@
         <div class="card-body" style="display:grid;gap:12px">
           <div class="card-head" style="padding:0;border:0"><span class="badge plain">3</span><h3>Joylashuv tekshiruvi</h3></div>
           <div id="duty-map" class="map sm" data-map data-lat="{{ duty.latitude|stringformat:'s' }}" data-lng="{{ duty.longitude|stringformat:'s' }}" data-radius="{{ duty.radius_m }}"></div>
-          <div class="small muted">Naryad faqat bino hududida ({{ duty.radius_m }} m radius) turganingizda yakunlanadi.</div>
+          <div class="small muted">Naryad faqat bino hududida ({{ duty.radius_m }} m radius) turganingizda yakunlanadi.{% if face_enabled %} Avval old kamerada jonli yuz tekshiruvi o'tkaziladi.{% endif %}</div>
           <input type="hidden" name="latitude"><input type="hidden" name="longitude"><input type="hidden" name="accuracy">
           <button class="btn btn-success btn-xl" type="submit" data-geo-submit><i data-lucide="flag"></i> Naryadni yakunlash</button>
           <div class="geo-status"></div>

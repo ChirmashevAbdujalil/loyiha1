@@ -72,6 +72,29 @@
       </div>
     </div>
 
+    {% if is_staff and face_checks %}
+    <div class="card">
+      <div class="card-head"><i data-lucide="scan-face"></i><h3>Yuz tekshiruvlari</h3><span class="small muted right">selfi va bazadagi rasm</span></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Vaqt</th><th>A'zo</th><th>Selfi</th><th>Amal</th><th>O'xshashlik</th><th>Natija</th></tr></thead>
+          <tbody>
+          {% for c in face_checks %}
+            <tr>
+              <td class="small nowrap">{{ c.created_at|uz_datetime }}</td>
+              <td><div class="person">{% member_avatar c.duty_member.member %}<span class="n small">{{ c.duty_member.member.full_name }}</span></div></td>
+              <td>{% if c.selfie %}<a href="{% url 'qalqon:face_selfie' c.pk %}" target="_blank"><img src="{% url 'qalqon:face_selfie' c.pk %}" alt="" style="width:54px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--border)"></a>{% endif %}</td>
+              <td class="small">{{ c.get_action_display }}{% if c.used %} <span class="badge plain" style="height:18px;font-size:10px">ishlatildi</span>{% endif %}</td>
+              <td class="small">{% if c.similarity_pct is not None %}{{ c.similarity_pct }}%{% else %}—{% endif %}{% if not c.liveness %} <span class="muted">· bosh burilmadi</span>{% endif %}</td>
+              <td class="small">{% if c.passed %}<span class="badge st-approved">O'tdi</span>{% else %}<span class="badge st-overdue">Rad</span> <span class="muted">{{ c.message|truncatechars:60 }}</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
     {% if is_staff and logs %}
     <div class="card">
       <div class="card-head"><i data-lucide="locate"></i><h3>Joylashuv tekshiruvlari</h3><span class="small muted right">oxirgi 50 ta</span></div>

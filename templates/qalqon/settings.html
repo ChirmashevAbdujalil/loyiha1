@@ -11,6 +11,8 @@
       {% include "includes/field.html" with field=form.max_gps_accuracy %}
       {% include "includes/field.html" with field=form.start_early_minutes %}
       {% include "includes/field.html" with field=form.finish_grace_hours %}
+      <div class="field"><label class="check">{{ form.face_check_enabled }} {{ form.face_check_enabled.label }}</label><div class="help">{{ form.face_check_enabled.help_text }}</div></div>
+      {% include "includes/field.html" with field=form.face_threshold %}
       <div class="form-actions"><button class="btn btn-primary" type="submit"><i data-lucide="save"></i> Saqlash</button></div>
     </div>
   </form>

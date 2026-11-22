@@ -13,7 +13,7 @@ from django.utils import timezone
 from core.models import Faculty, Notification, User
 
 from . import services
-from .models import Building, Duty, DutyMember, LocationLog, MemberProfile, Violation, distance_m
+from .models import Building, Duty, DutyMember, FaceCheck, LocationLog, MemberProfile, Violation, distance_m
 
 MEDIA = tempfile.mkdtemp()
 TTJ = (41.338210, 69.334410)
@@ -43,6 +43,13 @@ class DutyFlowTests(TestCase):
                                            first_name="Feruza", last_name="Bakirova", faculty=self.faculty)
         self.ttj = Building.objects.create(name="1-son TTJ", short_name="TTJ-1", latitude=TTJ[0],
                                            longitude=TTJ[1], radius_m=100)
+        # Bu testlar GPS va vaqt qoidalari uchun; yuz tekshiruvi FaceCheckTests'da alohida sinaladi
+        from .models import QalqonSettings, _conf_cache
+
+        QalqonSettings.objects.create(pk=1, face_check_enabled=False, **{
+            k: v for k, v in QalqonSettings.defaults().items() if k != "face_check_enabled"})
+        _conf_cache.clear()
+        self.addCleanup(_conf_cache.clear)
 
     def _duty(self, date=None, start=dt.time(18), end=dt.time(22)):
         self.client.force_login(self.leader)
@@ -472,7 +479,8 @@ class QalqonSettingsTests(TestCase):
         self.client.force_login(head)
         self.assertEqual(qalqon_conf()["max_gps_accuracy"], 150)
         r = self.client.post(reverse("qalqon:settings"),
-                             {"max_gps_accuracy": 250, "start_early_minutes": 60, "finish_grace_hours": 6})
+                             {"max_gps_accuracy": 250, "start_early_minutes": 60, "finish_grace_hours": 6,
+                              "face_check_enabled": "on", "face_threshold": 0.36})
         self.assertEqual(r.status_code, 302)
         self.assertEqual(qalqon_conf()["max_gps_accuracy"], 250)
 
@@ -492,3 +500,133 @@ class QalqonSettingsTests(TestCase):
         r = self.client.get(reverse("dashboard"))
         self.assertRegex(r.content.decode(), r"/static/css/app\.css\?v=\d+")
         self.assertRegex(r.content.decode(), r"/static/js/app\.js\?v=\d+")
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class FaceCheckTests(TestCase):
+    def setUp(self):
+        from .models import _conf_cache
+
+        _conf_cache.clear()
+        self.addCleanup(_conf_cache.clear)
+        fac = Faculty.objects.create(name="F")
+        self.leader = User.objects.create_user("sardor", password="x12345", role=User.Role.QALQON_LEADER, faculty=fac)
+        self.m = User.objects.create_user("a1", password="x12345", role=User.Role.QALQON_MEMBER, faculty=fac)
+        MemberProfile.objects.create(user=self.m)
+        ttj = Building.objects.create(name="TTJ", latitude=TTJ[0], longitude=TTJ[1], radius_m=100)
+        self.duty = Duty.objects.create(date=timezone.localdate(), start_time=dt.time(18), end_time=dt.time(22),
+                                        building=ttj, latitude=TTJ[0], longitude=TTJ[1], radius_m=100,
+                                        created_by=self.leader)
+        self.dm = DutyMember.objects.create(duty=self.duty, member=self.m)
+
+    def _at(self, hour, minute=0):
+        moment = dt.datetime.combine(self.duty.date, dt.time(hour, minute))
+        return mock.patch("django.utils.timezone.now", return_value=timezone.make_aware(moment))
+
+    def _frames(self, n=3):
+        from PIL import Image
+
+        out = {}
+        for i in range(n):
+            buf = BytesIO()
+            Image.new("RGB", (64, 64), (i * 40, 90, 120)).save(buf, "JPEG")
+            out[f"frame_{i}"] = SimpleUploadedFile(f"f{i}.jpg", buf.getvalue(), content_type="image/jpeg")
+        return out
+
+    def test_models_load_and_reject_faceless_frames(self):
+        import numpy as np
+
+        from . import face
+
+        self.assertTrue(face.available())
+        blank = face.analyze(np.full((480, 640, 3), 128, np.uint8))
+        self.assertFalse(blank.found)
+
+    def test_verify_logic(self):
+        import numpy as np
+
+        from . import face
+
+        feat = np.ones((1, 128), np.float32)
+        steps = ["center", "left", "right"]
+
+        def run(yaws, sim_ref=0.6, sim_frames=0.8, reference=feat):
+            results = iter([face.FrameResult(True, 1, y, 150, feat) for y in yaws])
+            sims = iter([sim_frames, sim_frames, sim_ref])
+            with mock.patch.object(face, "decode_image", return_value=object()), \
+                    mock.patch.object(face, "analyze", side_effect=lambda img: next(results)), \
+                    mock.patch.object(face, "similarity", side_effect=lambda a, b: next(sims)):
+                return face.verify([b"x", b"y", b"z"], steps, reference, 0.36)
+
+        self.assertTrue(run([0.02, 0.25, -0.22]).passed)                # haqiqiy bosh burish
+        self.assertTrue(run([0.05, -0.20, 0.30]).passed)                # ko'zgu kamera — teskari tomon ham o'tadi
+        static = run([0.04, 0.05, 0.03])                                # qotgan rasm — burilish yo'q
+        self.assertFalse(static.passed)
+        self.assertFalse(static.liveness)
+        self.assertFalse(run([0.02, 0.25, 0.22]).passed)                # ikkalasi bir tomonga
+        stranger = run([0.0, 0.25, -0.25], sim_ref=0.15)
+        self.assertFalse(stranger.passed)
+        self.assertTrue(stranger.liveness)
+        self.assertFalse(run([0.0, 0.25, -0.25], reference=None).passed)  # bazada rasm yo'q
+
+    def test_start_requires_face_check(self):
+        from . import face
+
+        self.client.force_login(self.m)
+        start = reverse("qalqon:duty_start", args=[self.dm.pk])
+        gps = {"latitude": NEAR[0], "longitude": NEAR[1], "accuracy": 10}
+        with self._at(18, 2):
+            self.client.post(start, gps)
+        self.dm.refresh_from_db()
+        self.assertEqual(self.dm.status, DutyMember.Status.SCHEDULED)  # yuz tekshiruvisiz boshlanmaydi
+
+        with self._at(18, 3):
+            ch = self.client.post(reverse("qalqon:face_challenge", args=[self.dm.pk]), {"action": "start"}).json()
+            self.assertTrue(ch["ok"])
+            self.assertEqual([s["key"] for s in ch["steps"]][0], "center")
+            with mock.patch.object(face, "verify", return_value=face.Verdict(False, False, None, "Bosh burilmadi")), \
+                    mock.patch.object(face, "reference_feature", return_value=None):
+                r = self.client.post(reverse("qalqon:face_verify", args=[self.dm.pk]),
+                                     {"action": "start", "nonce": ch["nonce"], **self._frames()}).json()
+            self.assertFalse(r["ok"])
+            self.client.post(start, gps)
+        self.dm.refresh_from_db()
+        self.assertEqual(self.dm.status, DutyMember.Status.SCHEDULED)
+
+        with self._at(18, 4):
+            ch = self.client.post(reverse("qalqon:face_challenge", args=[self.dm.pk]), {"action": "start"}).json()
+            with mock.patch.object(face, "verify", return_value=face.Verdict(True, True, 0.71, "Yuz tasdiqlandi (71%).")), \
+                    mock.patch.object(face, "reference_feature", return_value=None):
+                r = self.client.post(reverse("qalqon:face_verify", args=[self.dm.pk]),
+                                     {"action": "start", "nonce": ch["nonce"], **self._frames()}).json()
+            self.assertTrue(r["ok"])
+            # eski nonce qayta ishlatilmaydi
+            again = self.client.post(reverse("qalqon:face_verify", args=[self.dm.pk]),
+                                     {"action": "start", "nonce": ch["nonce"], **self._frames()})
+            self.assertEqual(again.status_code, 400)
+            self.client.post(start, gps)
+        self.dm.refresh_from_db()
+        self.assertEqual(self.dm.status, DutyMember.Status.ACTIVE)
+        checks = list(FaceCheck.objects.filter(duty_member=self.dm).order_by("created_at"))
+        self.assertEqual([c.passed for c in checks], [False, True])
+        self.assertTrue(checks[1].used and checks[1].selfie)
+
+        # Sardor selfini ko'radi, boshqa a'zo ko'ra olmaydi
+        self.client.force_login(self.leader)
+        self.assertEqual(self.client.get(reverse("qalqon:face_selfie", args=[checks[1].pk])).status_code, 200)
+        other = User.objects.create_user("a2", password="x12345", role=User.Role.QALQON_MEMBER)
+        self.client.force_login(other)
+        self.assertEqual(self.client.get(reverse("qalqon:face_selfie", args=[checks[1].pk])).status_code, 403)
+
+    def test_disabled_in_settings(self):
+        from .models import QalqonSettings
+
+        s = QalqonSettings.load()
+        s.face_check_enabled = False
+        s.save()
+        self.client.force_login(self.m)
+        with self._at(18, 2):
+            self.client.post(reverse("qalqon:duty_start", args=[self.dm.pk]),
+                             {"latitude": NEAR[0], "longitude": NEAR[1], "accuracy": 10})
+        self.dm.refresh_from_db()
+        self.assertEqual(self.dm.status, DutyMember.Status.ACTIVE)

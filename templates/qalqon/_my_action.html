@@ -4,10 +4,11 @@
   {% if dm.start_state == 'ok' %}
     <form class="action-card go qs-finished" method="post" action="{% url 'qalqon:duty_start' dm.pk %}" data-geo
           data-lat="{{ duty.latitude|stringformat:'s' }}" data-lng="{{ duty.longitude|stringformat:'s' }}" data-radius="{{ duty.radius_m }}"
-          data-max-accuracy="{{ max_accuracy|default:150 }}" data-map="duty-map">{% csrf_token %}
+          data-max-accuracy="{{ max_accuracy|default:150 }}" data-map="duty-map"
+          {% if face_enabled %}data-face-challenge="{% url 'qalqon:face_challenge' dm.pk %}" data-face-verify="{% url 'qalqon:face_verify' dm.pk %}" data-face-action="start"{% endif %}>{% csrf_token %}
       <span class="big-ic"><i data-lucide="map-pin"></i></span>
       <h3>Navbat kuningiz keldi</h3>
-      <div class="muted">Bino hududiga ({{ duty.radius_m }} m radius) yetib kelgach, tugmani bosing — joylashuvingiz avtomatik tekshiriladi.</div>
+      <div class="muted">Bino hududiga ({{ duty.radius_m }} m radius) yetib kelgach, tugmani bosing —{% if face_enabled %} avval old kamerada yuzingiz, keyin{% endif %} joylashuvingiz avtomatik tekshiriladi.</div>
       <input type="hidden" name="latitude"><input type="hidden" name="longitude"><input type="hidden" name="accuracy">
       <button class="btn btn-success btn-xl" type="submit" data-geo-submit><i data-lucide="play"></i> Naryadni boshlash</button>
       <div class="geo-status"></div>

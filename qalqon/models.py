@@ -82,6 +82,9 @@ class MemberProfile(models.Model):
     region = models.CharField("Viloyat", max_length=100, blank=True)
     district = models.CharField("Tuman / shahar", max_length=100, blank=True)
     address = models.CharField("Yashash manzili", max_length=500, blank=True)
+    # Yuz tekshiruvi uchun rasmdan hisoblangan "yuz izi" (SFace, 128 son) — rasm o'zgarsa qayta hisoblanadi
+    face_embedding = models.BinaryField(null=True, blank=True, editable=False)
+    face_embedding_src = models.CharField(max_length=255, blank=True, editable=False)
     direction = models.CharField("Yo'nalish", max_length=255, blank=True)
     group_name = models.CharField("Guruh", max_length=50, blank=True)
     course = models.PositiveSmallIntegerField("Kurs", null=True, blank=True,
@@ -393,6 +396,15 @@ class QalqonSettings(models.Model):
     finish_grace_hours = models.PositiveIntegerField(
         "Tugash vaqtidan keyin necha soat ichida yakunlash mumkin", validators=[MinValueValidator(1), MaxValueValidator(72)],
     )
+    face_check_enabled = models.BooleanField(
+        "Naryadni boshlash va yakunlashda jonli yuz tekshiruvi", default=True,
+        help_text="A'zo old kamerada yuzini ko'rsatadi va boshini buradi; yuzi bazadagi rasmi bilan solishtiriladi.",
+    )
+    face_threshold = models.FloatField(
+        "Yuz o'xshashligi chegarasi", default=0.36, validators=[MinValueValidator(0.2), MaxValueValidator(0.9)],
+        help_text="0.36 — tavsiya etiladi. Kattaroq qiymat qattiqroq (begona odam o'tishi qiyinroq, lekin "
+                  "egasining o'zi ham ba'zan rad etilishi mumkin).",
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -413,6 +425,8 @@ class QalqonSettings(models.Model):
             "max_gps_accuracy": getattr(settings, "QALQON_MAX_GPS_ACCURACY", 150),
             "start_early_minutes": getattr(settings, "QALQON_START_EARLY_MINUTES", 60),
             "finish_grace_hours": getattr(settings, "QALQON_FINISH_GRACE_HOURS", 6),
+            "face_check_enabled": getattr(settings, "QALQON_FACE_CHECK", True),
+            "face_threshold": 0.36,
         }
 
     @classmethod
@@ -437,6 +451,40 @@ def qalqon_conf():
     conf = QalqonSettings.defaults()
     if obj:
         conf.update(max_gps_accuracy=obj.max_gps_accuracy, start_early_minutes=obj.start_early_minutes,
-                    finish_grace_hours=obj.finish_grace_hours)
+                    finish_grace_hours=obj.finish_grace_hours, face_check_enabled=obj.face_check_enabled,
+                    face_threshold=obj.face_threshold)
     _conf_cache["conf"] = (time.monotonic(), conf)
     return conf
+
+
+def face_selfie_path(instance, filename):
+    import secrets
+
+    return f"qalqon/face_checks/{timezone.now():%Y/%m}/{instance.duty_member_id}_{secrets.token_hex(4)}.jpg"
+
+
+class FaceCheck(models.Model):
+    """Naryadni boshlash/yakunlashdan oldingi jonli yuz tekshiruvi (audit uchun selfi bilan)."""
+
+    duty_member = models.ForeignKey(DutyMember, on_delete=models.CASCADE, related_name="face_checks")
+    action = models.CharField(max_length=10, choices=LocationLog.Action.choices)
+    passed = models.BooleanField(default=False)
+    liveness = models.BooleanField("Jonlilik (bosh burish)", default=False)
+    similarity = models.FloatField("O'xshashlik", null=True, blank=True)
+    message = models.CharField(max_length=255, blank=True)
+    selfie = models.FileField(upload_to=face_selfie_path, blank=True)
+    used = models.BooleanField("Naryadda ishlatilgan", default=False)
+    user_agent = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Yuz tekshiruvi"
+        verbose_name_plural = "Yuz tekshiruvlari"
+
+    def __str__(self):
+        return f"{self.duty_member} — {self.get_action_display()} ({'o\'tdi' if self.passed else 'rad'})"
+
+    @property
+    def similarity_pct(self):
+        return None if self.similarity is None else round(max(0.0, self.similarity) * 100)

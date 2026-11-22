@@ -118,6 +118,118 @@
     }, 1000);
   }
 
+
+  // ================================================================= jonli yuz tekshiruvi
+  var FACE_CSS = ".face-modal{position:fixed;inset:0;background:rgba(10,14,24,.92);z-index:300;display:flex;align-items:center;" +
+    "justify-content:center;padding:16px}.face-box{width:100%;max-width:420px;color:#fff;text-align:center}" +
+    ".face-cam{position:relative;width:100%;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:#000;margin:12px 0}" +
+    ".face-cam video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}" +
+    ".face-oval{position:absolute;left:50%;top:46%;width:62%;height:62%;transform:translate(-50%,-50%);border:3px dashed rgba(255,255,255,.75);" +
+    "border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.35)}.face-oval.go{border-color:#34d399;border-style:solid}" +
+    ".face-step{font-size:20px;font-weight:800;min-height:56px}.face-sub{font-size:13px;opacity:.75;min-height:36px}" +
+    ".face-count{position:absolute;right:14px;top:10px;font-size:40px;font-weight:800;text-shadow:0 2px 8px #000}" +
+    ".face-dots{display:flex;gap:6px;justify-content:center;margin:6px 0}.face-dots i{width:28px;height:6px;border-radius:3px;background:rgba(255,255,255,.25)}" +
+    ".face-dots i.on{background:#34d399}.face-btns{display:flex;gap:10px;justify-content:center;margin-top:10px}" +
+    ".face-msg{margin-top:8px;padding:10px 12px;border-radius:10px;font-size:14px;text-align:left}.face-msg.err{background:#7f1d1d}.face-msg.ok{background:#065f46}";
+
+  function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function runFace(form) {
+    if (!document.getElementById("face-css")) { var st = el("style"); st.id = "face-css"; st.textContent = FACE_CSS; document.head.appendChild(st); }
+    var csrf = form.querySelector("[name=csrfmiddlewaretoken]").value;
+    var action = form.dataset.faceAction;
+    var modal = el("div", "face-modal"), box = el("div", "face-box");
+    var title = el("div", "face-step", "Jonli yuz tekshiruvi");
+    var sub = el("div", "face-sub", "Old kamera ochiladi. Yuzingizni oval ichiga joylang.");
+    var cam = el("div", "face-cam"), video = el("video"), oval = el("div", "face-oval"), count = el("div", "face-count");
+    video.setAttribute("playsinline", ""); video.muted = true; video.autoplay = true;
+    cam.appendChild(video); cam.appendChild(oval); cam.appendChild(count);
+    var dots = el("div", "face-dots"), msg = el("div", "face-msg"), btns = el("div", "face-btns");
+    msg.style.display = "none";
+    var cancel = el("button", "btn", "Bekor qilish"), retry = el("button", "btn btn-success", "Qayta urinish");
+    cancel.type = retry.type = "button"; retry.style.display = "none";
+    btns.appendChild(cancel); btns.appendChild(retry);
+    [title, sub, cam, dots, msg, btns].forEach(function (x) { box.appendChild(x); });
+    modal.appendChild(box); document.body.appendChild(modal);
+
+    var stream = null, closed = false;
+    function stop() { if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; } }
+    function close() { closed = true; stop(); modal.remove(); }
+    function showMsg(text, cls) { msg.style.display = ""; msg.className = "face-msg " + cls; msg.textContent = text; }
+
+    function capture() {
+      var w = video.videoWidth, h = video.videoHeight, scale = Math.min(1, 640 / Math.max(w, h));
+      var c = document.createElement("canvas"); c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+      c.getContext("2d").drawImage(video, 0, 0, c.width, c.height);
+      return new Promise(function (res) { c.toBlob(res, "image/jpeg", 0.88); });
+    }
+
+    function post(url, data) {
+      return fetch(url, { method: "POST", body: data, credentials: "same-origin", headers: { "X-CSRFToken": csrf } })
+        .then(function (r) { return r.json().catch(function () { return { ok: false, message: "Server javobi noto'g'ri (" + r.status + ")." }; }); });
+    }
+
+    function attempt() {
+      retry.style.display = "none"; msg.style.display = "none"; oval.classList.remove("go");
+      var fd = new FormData(); fd.append("action", action);
+      var challenge;
+      return post(form.dataset.faceChallenge, fd).then(function (ch) {
+        if (!ch.ok) throw new Error(ch.message);
+        challenge = ch;
+        dots.innerHTML = ""; ch.steps.forEach(function () { dots.appendChild(el("i")); });
+        if (stream) return null;
+        return navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 960 } }, audio: false })
+          .then(function (s) { stream = s; video.srcObject = s; return video.play(); }, function (err) {
+            throw new Error(err && err.name === "NotAllowedError"
+              ? "Kameraga ruxsat berilmadi. Brauzer sozlamalarida ushbu sayt uchun kamerani yoqing."
+              : "Old kamerani ochib bo'lmadi. Telefon kamerasi ishlayotganini tekshiring.");
+          });
+      }).then(function () { return sleep(700); }).then(function () {
+        var frames = [], chain = Promise.resolve();
+        challenge.steps.forEach(function (step, i) {
+          chain = chain.then(function () {
+            if (closed) throw new Error("cancel");
+            title.textContent = step.text;
+            sub.textContent = step.key === "center" ? "Yuzingiz oval ichida, yorug' tomonda bo'lsin" : "Boshingizni buring va shu holatda turing";
+            var n = step.key === "center" ? 2 : 3;
+            function tick() {
+              count.textContent = n;
+              if (n === 0) { count.textContent = ""; return capture(); }
+              n -= 1; return sleep(800).then(tick);
+            }
+            return tick().then(function (blob) { frames.push(blob); dots.children[i].className = "on"; });
+          });
+        });
+        return chain.then(function () { return frames; });
+      }).then(function (frames) {
+        title.textContent = "Tekshirilmoqda…"; sub.textContent = "Bir necha soniya kuting";
+        var fd2 = new FormData(); fd2.append("action", action); fd2.append("nonce", challenge.nonce);
+        frames.forEach(function (b, i) { fd2.append("frame_" + i, b, "frame_" + i + ".jpg"); });
+        return post(form.dataset.faceVerify, fd2);
+      }).then(function (res) {
+        if (!res.ok) throw new Error(res.message);
+        return res;
+      });
+    }
+
+    return new Promise(function (resolve, reject) {
+      cancel.onclick = function () { close(); reject(new Error("cancel")); };
+      function go() {
+        attempt().then(function (res) {
+          oval.classList.add("go"); title.textContent = "Yuz tasdiqlandi"; showMsg(res.message, "ok");
+          setTimeout(function () { close(); resolve(); }, 900);
+        }, function (err) {
+          if (closed) return;
+          title.textContent = "Tekshiruvdan o'tilmadi"; sub.textContent = "";
+          showMsg(err.message || "Xatolik yuz berdi.", "err"); retry.style.display = "";
+        });
+      }
+      retry.onclick = go;
+      go();
+    });
+  }
+
   // ---- Joylashuvni aniqlab forma yuborish: <form data-geo data-lat data-lng data-radius data-map="id">
   document.querySelectorAll("form[data-geo]").forEach(function (form) {
     var status = form.querySelector(".geo-status");
@@ -125,7 +237,7 @@
     var targetLat = parseFloat(form.dataset.lat), targetLng = parseFloat(form.dataset.lng);
     var radius = parseFloat(form.dataset.radius);
     var maxAcc = parseFloat(form.dataset.maxAccuracy || "150");
-    var ready = false;
+    var ready = false, faceOk = false;
     function say(text, cls) {
       if (!status) return;
       status.className = "geo-status show " + (cls || "");
@@ -138,6 +250,15 @@
       if (!("geolocation" in navigator)) { say("Bu qurilma joylashuvni aniqlay olmaydi.", "err"); return; }
       if (!window.isSecureContext) {
         say("Joylashuvni aniqlash uchun sayt HTTPS orqali ochilishi kerak.", "err"); return;
+      }
+      // 1-qadam: jonli yuz tekshiruvi (yoqilgan bo'lsa), 2-qadam: GPS
+      if (form.dataset.faceChallenge && !faceOk) {
+        runFace(form).then(function () {
+          faceOk = true;
+          say("Yuz tasdiqlandi. Endi joylashuv aniqlanadi…", "ok");
+          if (form.requestSubmit) { form.requestSubmit(btn); } else { form.dispatchEvent(new Event("submit", { cancelable: true })); }
+        }, function () { /* bekor qilindi */ });
+        return;
       }
       btn.disabled = true;
       var original = btn.innerHTML;
